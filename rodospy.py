@@ -278,6 +278,16 @@ class DataItem(object):
         for feature in layer:
             return feature.GetField("Value") 
 
+    def areaExceeding(self,value):
+        "calculate area where value is exceeded"
+        gml_data = gml_driver.Open(self.gml)
+        layer = gml_data.GetLayer()
+        layer.SetAttributeFilter( "Value > %f" % value )
+        area = 0
+        for feature in layer:
+            area += feature.GetGeometryRef().GetArea()
+        return area
+
     def max(self):
         "Get max value and its lon/lat location"
         gml_data = gml_driver.Open(self.gml)
