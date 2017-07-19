@@ -5,7 +5,9 @@ import ogr
 import os
 from datetime import datetime, timedelta
 from copy import copy
-import psycopg2
+import urllib2
+import json
+from xml.etree.ElementTree import XML, fromstring, tostring
 # standard logging
 import logging
 logger = logging.getLogger('rodospy')
@@ -18,13 +20,46 @@ ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+owslib_log = logging.getLogger('owslib')
+# Add formatting and handlers as needed
+owslib_log.setLevel(logging.DEBUG)
+
 # GDAL contants
 wgs84_cs = osr.SpatialReference()
 wgs84_cs.ImportFromEPSG(4326)
 gml_driver = ogr.GetDriverByName('GML')
 
+# META request XML content
+meta_xml = """
+<?xml version="1.0" encoding="UTF-8"?><wps:Execute version="1.0.0" service="WPS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
+  <ows:Identifier>gs:JRodosMetadataWPS</ows:Identifier>
+  <wps:DataInputs>
+    <wps:Input>
+      <ows:Identifier>projectArg</ows:Identifier>
+      <wps:Data>
+        <wps:LiteralData>all</wps:LiteralData>
+      </wps:Data>
+    </wps:Input>
+  </wps:DataInputs>
+  <wps:ResponseForm>
+    <wps:RawDataOutput mimeType="application/octet-stream">
+      <ows:Identifier>result</ows:Identifier>
+    </wps:RawDataOutput>
+  </wps:ResponseForm>
+</wps:Execute>
+"""
+
+def time_formatter(time_string):
+    "format rodos strings to python datetime objects"
+    # two possible time formats
+    try:
+        time_value = datetime.strptime( time_string.split(".")[0], '%Y-%m-%dT%H:%M:%S')
+    except ValueError:
+        time_value = datetime.strptime( time_string.split(".")[0], '%Y-%m-%dT%H:%M:%SZ')
+    return time_value
+
 class RodosPyException(Exception):
-    "Module spesific exception"
+    "Module specific exception"
     pass
 
 class RodosConnection(object):
@@ -43,37 +78,20 @@ class RodosConnection(object):
             # try to read from config file
             raise RodosPyException( "No DB settings defined" )
         p = db_settings["postgres"]
-        w = db_settings["wps"]
+        self.w = db_settings["wps"]
         self.pg = "host='%s' user='%s' password='%s' port=%i" % \
             (p["host"],p["user"],p["password"],p["port"])
-        self.wps = WebProcessingService(w["url"], verbose=False, skip_caps=True)
-        self.storage = w["file_storage"]
+        self.wps = WebProcessingService(self.w["url"], verbose=True, skip_caps=True)
+        self.storage = self.w["file_storage"]
         # check that connections are OK
         self.check_connections()
-
-    def query(self,query_string,dbname=None):
-        """perform queries in JRodos Postgres database"""
-        db_conn = self.pg 
-        if dbname:
-            db_conn += " dbname=%s" % dbname
-        conn = psycopg2.connect(db_conn)
-        cur = conn.cursor()
-        logger.debug( "Execute Postgres query: %s" % query_string )
-        cur.execute(query_string)
-        rows = cur.fetchall()
-        conn.close()
-        return rows
+        self.projects = self.get_projects()
 
     def check_connections(self):
         "Check connections"
         logger.debug("Check DB and WPS connections")
         # listing of projects?
         self.db_alive = False
-        try:
-            projects = self.projects()
-            self.db_alive = True
-        except RodosPyException: # db error?
-            raise RodosPyException( "DB Connection failed" )
         # GetCapabilities
         try:
             capabilities = self.wps.getcapabilities()
@@ -81,30 +99,34 @@ class RodosConnection(object):
         except RodosPyException:
             raise RodosPyException( "WPS Service not available" )
 
-    def projects(self,query_filter={}):
-        "Get list of projects from RODOS DB"
-        # get project list
-        logger.debug ( "Get listing of projects from DB %s" % self.pg )
-        q = "SELECT uid,name,description,username,modelchainname FROM project "
-        if query_filter!={}:
-            q += "WHERE "
-            i = 0
-            for key in query_filter.keys():
-                if i>0:
-                    q += " AND " 
-                q += "%s='%s'" % (key,query_filter[key])
-                i +=1
-        result = self.query(q,"ModelEnvironment")
+    def refresh_projects():
+        "get refreshed list of projects"
+        self.projects = self.get_projects()
+
+    def get_projects(self): # fetch the project list
+        """
+        Get listing of projects. 
+        project_uid as parameter if only one project information wanted."
+        """
+        r = urllib2.Request(
+            self.w["url"],
+            data=meta_xml.replace("\n",""),
+            headers={
+                'Content-Type': 'application/xml',
+                })
+        response = urllib2.urlopen(r)
+        proj_dict = json.loads(response.read())["rodos_projects"]
         projects = []
-        for r in result:
+        for p in proj_dict:
             values = {
-                "uid": r[0],
-                "name": r[1],
-                "description": r[2],
-                "username": r[3],
-                "modelchainname": r[4]
+                "uid": p["project_uid"],
+                "name": p["name"],
+                "comment": p["comment"],
+                "user": p["user"],
+                "modelchainname": p["modelchainname"],
+                "calculationDate": time_formatter(p["calculationDate"])
             }
-            projects.append( Project(self, None, values) )
+            projects.append(Project(self,None,values))
         return projects
 
 class Project(object):
@@ -122,42 +144,50 @@ class Project(object):
             raise RodosPyException( "Either project uid or velues dict must be defined" )
         self.rodos = rodos
         if project_uid:
-            # query from database by project name
-            q = "SELECT uid,name,description,username,modelchainname FROM project WHERE uid='%s';"\
-                % (project_uid)
-            result = self.rodos.query(q,"ModelEnvironment")[0]
+            for p in rodos.projects:
+                if p.uid==project_uid:
+                    self.uid = p.uid
+                    self.name = p.name
+                    self.comment = p.comment
+                    self.user = p.user
+                    self.modelchainname = p.modelchainname
+                    self.calculationdate = p.calculationdate
         else:
-            result = (
-                values["uid"],
-                values["name"],
-                values["description"],
-                values["username"],
-                values["modelchainname"]
-            )
-        self.uid = result[0]
-        self.name = result[1]
-        self.description = result[2]
-        self.username = result[3]
-        self.modelchainname = result[4]
+            self.uid = values["uid"]
+            self.name = values["name"]
+            self.comment = values["comment"]
+            self.user = values["user"]
+            self.modelchainname = values["modelchainname"]
+            self.calculationdate = values["calculationDate"]
+        self.details = None
+
+    def get_project_details(self):
+        "get details of the project. fetch only when necessary"
+        # fetch project details
+        r = urllib2.Request(
+            self.rodos.w["url"],
+            data=meta_xml.replace("\n","").replace("all","projectuid=" + self.uid),
+            headers={
+                'Content-Type': 'application/xml',
+                })
+        response = urllib2.urlopen(r)
+        self.details = json.loads(response.read())["rodos_results"]
 
     def tasks(self):
         "Get tasks in the project"
+        if self.details==None:
+            self.get_project_details()
         # read task id:s / names from db
         logger.debug( "Query project task list" )
-        q = "SELECT uid,task_id,modelwrappername,description,projectuid, dataitem_id FROM task WHERE projectuid='%s'"\
-            % self.uid
-        result = self.rodos.query(q,"ModelEnvironment")
         tasks = []
-        for r in result:
+        for p in self.details["task"]:
             values = {
-                "task_uid": r[0],
-                "task_id": r[1],
-                "modelwrappername": r[2],
-                "description": r[3],
-                "project_uid": r[4],
-                "dataitem_id": r[5]
+                "path": p["path"],
+                "modelwrapper": p["modelwrapper"],
+                "project_uid": self.uid,
+                "name": p["name"]
             }
-            tasks.append( Task( self.rodos,None, values ) )
+            tasks.append( Task( self,None, values ) )
         return tasks
  
 class Task(object):
@@ -165,81 +195,130 @@ class Task(object):
     JRodos Task instance. Contains single model run.
     """
     def __repr__(self):
-        return ("<Task %s | %s>" % (self.modelwrappername, self.description))
+        return ("<Task %s | %s>" % (self.modelwrapper, self.name))
 
-    def __init__(self,rodos,task_uid=None,values=None):
-        self.rodos = rodos
-        if (task_uid==None and values==None):
-                raise RodosPyException( "Either task uid or velues dict must be defined" )
-        if task_uid:
-            q = "SELECT task_id, description, modelwrappername\
-                , dataitem_id, projectuid,uid FROM task WHERE uid='%s'"\
-                % (task_uid)
-            result = self.rodos.query(q,"ModelEnvironment")[0]
-        else:
-            result = (
-                values["task_id"],
-                values["description"],
-                values["modelwrappername"],
-                values["dataitem_id"],
-                values["project_uid"],
-                values["task_uid"]
-            )
-        self.taskid = result[0]
-        self.description = result[1]
-        self.modelwrappername = result[2]
-        self.dataitem_id = result[3]
-        self.project = Project(rodos,result[4])
-        self.task_uid = result[5]
-
+    def __init__(self,project,task_path=None,values=None):
+        self.rodos = project.rodos
+        self.project = project
+        if self.project.details==None:
+            self.project.get_project_details()
+        if (task_path==None and values==None):
+            raise RodosPyException( "Either task uid or velues dict must be defined" )
+        if task_path:
+            for t in project.tasks():
+                if t.path==task_path:
+                    self.path = t.path
+                    self.modelwrapper = t.modelwrapper
+                    self.project_uid = t.project_uid
+                    self.name = t.name
+        self.path = values["path"]
+        self.modelwrapper = values["modelwrapper"]
+        self.project_uid = values["project_uid"]
+        self.name = values["name"]
 
     def datasets(self,filter_string=None):
         "list datasets available"
-        # TODO: not working with Sqlite storage!
-        # probably read from WPS service?
         logger.debug( "Get listing of Task datasets" )
-        q = "SELECT dataitem_id,name,groupname,datapath FROM dataitem" # WHERE taskid=%i" % self.taskid
-        # limit to prognostic results
-        #q += " AND datapath LIKE '%Model data=;=Output=;=Prognostic Results=%' "
-        if filter_string:
-            q += " AND datapath LIKE '%" + filter_string + "%' "
-        result = self.rodos.query(q,"ModelEnvironment")
-        return result
+        datasets = []
+        for p in self.project.details["task"]:
+            if p["path"]==self.path:
+                for layer in p["layers"]:
+                    params = []
+                    try:
+                        for f in layer["filters"]:
+                            param = f["param"]
+                            if not param in params:
+                                params.append(param)
+                    except KeyError:
+                        pass
+                    values = {
+                        "path": layer["path"],
+                        "unit": layer["unit"],
+                        "name": layer["name"],
+                        "params": params
+                    }
+                    datasets.append( Dataset( self,values ) )
+        return datasets
         
 class Dataset(object):
     """
-    JRodos fataset instance.
+    JRodos dataset instance.
     May contain several times and levels
     """
     def __repr__(self):
-        return ("<Task %s | %s>" % (self.task.task_uid, self.path))
+        return ("<Task %s | %s>" % (self.task.name, self.path))
 
-    def __init__(self,rodos,task,path):
-        self.rodos = rodos
+    def __init__(self,task,values):
+        self.rodos = task.rodos
+        self.project = task.project
         self.task = task
-        self.path = path
+        self.path = values["path"]
+        self.unit = values["unit"]
+        self.name = values["name"]
+        self.params = values["params"]
+        self.times = None
+        self.nuclides = None
+        self.levels = None
+        self.default_time = None
+        self.default_nuclide = None
+        if "date" in self.params:
+            self.get_times()
+        if "nuclide" in self.params:
+            self.get_nuclides()
+        if "level" in self.params:
+            self.get_levels()
 
-    def times(self):
+    def get_times(self):
         "read timestamps as Python objects" 
-        return ["TODO"]
+        for p in self.project.details["task"]:
+            if p["path"]==self.task.path:
+                for layer in p["layers"]:
+                    if layer["path"]==self.path:
+                        for f in layer["filters"]:
+                            if f["param"]=="date":
+                                times = f["allowedValues"]
+                            self.times = times
+                            self.default_time = f["defaultValue"]
+                            break
+        self.default_time = time_formatter(self.default_time)
+        self.times = map(time_formatter,self.times)
+
+    def get_nuclides(self):
+        "read nuclides"
+        for p in self.project.details["task"]:
+            if p["path"]==self.task.path:
+                for layer in p["layers"]:
+                    if layer["path"]==self.path:
+                        for f in layer["filters"]:
+                            if f["param"]=="nuclide":
+                                nuclides = f["allowedValues"]
+                                default = f["defaultValue"]
+        self.nuclides = nuclides
+        self.default_nuclide = default
+
     
-    def levels(self):
+    def get_levels(self):
         "read height values"
         return ["TODO"]
  
 class DataItem(object):
-    def __init__(self,dataset,t_index=0,z_index=0):
+    """ 
+    Single 2D dataset.
+    """
+    def __init__(self,dataset,t_index=0,z_index=0,nuclide=None):
         self.dataset = dataset
         self.rodos = dataset.rodos
         self.t_index = t_index
         self.z_index = z_index
+        self.nuclide = nuclide
         self.wps_input = [
             ('taskArg', 
              "taskuid='%s'" % self.dataset.task.task_uid),
             ('dataitem',
              "path='%s'" % self.dataset.path),
-            ('column', str(t_index)),
-            ('vertical', str(z_index))
+            ('columns', str(t_index)), # only one column per data layer
+            ('vertical', str(z_index)),
+            ('threshold', str(0)) # TODO: add threshold support
         ]
         self.gml = self.save_gml()
         #read projection from gml
@@ -263,6 +342,7 @@ class DataItem(object):
         if (os.path.exists(filename) and force==False):
             return filename
         wps_run = self.rodos.wps.execute('gs:JRodosWPS',self.wps_input)
+
         logger.debug ( "Execute WPS with values %s" % (str(self.wps_input)) )
         wps_run.getOutput ( filename )
         return filename

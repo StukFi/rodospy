@@ -12,7 +12,7 @@ settings = {
     "wps": {
         # URL for Geoserver WPS service
         # it's enough to change host and port
-        "url": "http://vmkevubu2.stuk.fi:8080/geoserver/ows",
+        "url": "http://vmkevubu2.stuk.fi:8080/geoserver/wps",
         # Local storage of GML files, must be writeable
         "file_storage": "/tmp"
     }
@@ -27,15 +27,15 @@ import random
 rodos = RodosConnection( settings )
 # list projects available
 # filters can be used but they are not required
-projects = rodos.projects({"modelchainname": "Emergency"})
-#projects = rodos.projects({"name": "geoserver"})
+#projects = rodos.projects_old( )
+projects = rodos.projects
 
-print projects
+#print ( projects )
 
 # Choose random project
-#project = projects[random.randint( 0, len(projects)-1 )]
+project = projects[random.randint( 0, len(projects)-1 )]
 # Choose the latest project
-project = projects[-1]
+project = projects[0]
 # print name
 print ("Got project " + project.name)
 # get project tasks
@@ -44,23 +44,20 @@ print ("Project '%s' has tasks %s" % (project.name,tasks))
 # get random task
 task = tasks[random.randint( 0, len(tasks)-1 )]
 # TODO: Products is not implemented yet
-#products = task.datasets()
-#print ("Task '%s' has following products:" % task.task_uid)
-#for p in products:
-#    print (p)
-#product = Product(task,"gamma_dose_rate")
-
-# choose the product by name
-path = "'Model data=;=Output=;=Prognostic Results=;=Dose rates=;=Total gamma dose rate'"
-dataset = Dataset(rodos,task,path)
+datasets = task.datasets()
+print ("Task '%s' has following products:" % task.path)
+for d in datasets:
+    print (d)
+#choose random dataset
+dataset = datasets[random.randint( 0, len(datasets)-1 )]
 
 # iterate over timestep indices, from 0 to 23
 # TODO: times should be read from WPS or DB
 # first iteration is slow because results are not cached
-items = []
-for i in range(24):
-    items.append(DataItem(dataset,i,0))
-
+#items = []
+#for i in range(24):
+#    items.append(DataItem(dataset,i,0))
+"""
 # iterate over items and read max values
 # this is fast because results already exist on disk
 for i in items:
@@ -73,3 +70,4 @@ for i in items:
     print ( "Area at time index %i where 0.001 mSv/h is exceeded  is %f m2." % (i.t_index, a ) )
 
 # see more methods from rodospy.py 
+"""
