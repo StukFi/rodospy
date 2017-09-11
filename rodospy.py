@@ -5,8 +5,9 @@ import ogr
 import os
 from datetime import datetime, timedelta
 from copy import copy
-import urllib2
+import urllib
 import json
+import codecs
 from xml.etree.ElementTree import XML, fromstring, tostring
 # standard logging
 import logging
@@ -20,6 +21,10 @@ ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+# URL fetching parameters
+reader = codecs.getreader("utf-8")
+xml_headers = { 'Content-Type': 'application/xml' }
+
 owslib_log = logging.getLogger('owslib')
 # Add formatting and handlers as needed
 owslib_log.setLevel(logging.DEBUG)
@@ -31,7 +36,13 @@ gml_driver = ogr.GetDriverByName('GML')
 
 # META request XML content
 meta_xml = """
-<?xml version="1.0" encoding="UTF-8"?><wps:Execute version="1.0.0" service="WPS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
+<?xml version="1.0" encoding="UTF-8"?><wps:Execute version="1.0.0" service="WPS" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" 
+xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" 
+xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" 
+xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" 
+xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
   <ows:Identifier>gs:JRodosMetadataWPS</ows:Identifier>
   <wps:DataInputs>
     <wps:Input>
@@ -108,14 +119,12 @@ class RodosConnection(object):
         Get listing of projects. 
         project_uid as parameter if only one project information wanted."
         """
-        r = urllib2.Request(
-            self.w["url"],
-            data=meta_xml.replace("\n",""),
-            headers={
-                'Content-Type': 'application/xml',
-                })
-        response = urllib2.urlopen(r)
-        proj_dict = json.loads(response.read())["rodos_projects"]
+        data_val = meta_xml.replace("\n","").encode("utf-8")
+        req = urllib.request.Request ( self.w["url"],
+                                       data = data_val, 
+                                       headers = xml_headers)
+        response = urllib.request.urlopen( req )
+        proj_dict = json.load(reader(response))["rodos_projects"]
         projects = []
         for p in proj_dict:
             values = {
@@ -163,15 +172,13 @@ class Project(object):
 
     def get_project_details(self):
         "get details of the project. fetch only when necessary"
-        # fetch project details
-        r = urllib2.Request(
-            self.rodos.w["url"],
-            data=meta_xml.replace("\n","").replace("all","projectuid=" + self.uid),
-            headers={
-                'Content-Type': 'application/xml',
-                })
-        response = urllib2.urlopen(r)
-        self.details = json.loads(response.read())["rodos_results"]
+        data_val = meta_xml.replace("\n","").replace\
+                ("all","projectuid=" + self.uid).encode("utf-8")
+        req = urllib.request.Request ( self.rodos.w["url"],
+                                       data = data_val, 
+                                       headers = xml_headers)
+        response = urllib.request.urlopen( req )
+        self.details = json.load( reader(response) )["rodos_results"]
 
     def tasks(self):
         "Get tasks in the project"
