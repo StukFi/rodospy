@@ -1,14 +1,4 @@
 settings = {
-    "postgres": {
-        # Postgres host
-        "host": "navetta.stuk.fi",
-        # Postgres port, probably 5432 
-        "port": 5433,
-        # Postgres username
-        "user": "jrodos",
-        # Postgres password
-        "password": "jrodos"
-    },
     "wps": {
         # URL for Geoserver WPS service
         # it's enough to change host and port

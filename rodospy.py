@@ -64,9 +64,11 @@ def time_formatter(time_string):
     "format rodos strings to python datetime objects"
     # two possible time formats
     try:
-        time_value = datetime.strptime( time_string.split(".")[0], '%Y-%m-%dT%H:%M:%S')
+        time_value = datetime.strptime( time_string.split(".")[0], \
+            '%Y-%m-%dT%H:%M:%S')
     except ValueError:
-        time_value = datetime.strptime( time_string.split(".")[0], '%Y-%m-%dT%H:%M:%SZ')
+        time_value = datetime.strptime( time_string.split(".")[0], \
+            '%Y-%m-%dT%H:%M:%SZ')
     return time_value
 
 class RodosPyException(Exception):
@@ -80,19 +82,18 @@ class RodosConnection(object):
     The connection settings will be passed to other classes.
     """
     def __repr__(self):
-        return ("<RodosConnection %s | %s>" % (self.pg, self.wps))
+        return ("<RodosConnection %s | %s>" % (self.wps))
 
-    def __init__(self,db_settings=None):
+    def __init__(self,settings=None):
         "Initialize RODOS DB and WPS connection"
         logger.debug("Read settings from file")
-        if db_settings==None:
+        if settings==None:
             # try to read from config file
-            raise RodosPyException( "No DB settings defined" )
-        p = db_settings["postgres"]
+            raise RodosPyException( "No settings defined" )
         self.w = db_settings["wps"]
-        self.pg = "host='%s' user='%s' password='%s' port=%i" % \
-            (p["host"],p["user"],p["password"],p["port"])
-        self.wps = WebProcessingService(self.w["url"], verbose=True, skip_caps=True)
+        self.wps = WebProcessingService(self.w["url"], 
+                                        verbose=True, 
+                                        skip_caps=True)
         self.storage = self.w["file_storage"]
         # check that connections are OK
         self.check_connections()
@@ -150,7 +151,9 @@ class Project(object):
     def __init__(self,rodos,project_uid=None,values=None):
         "Project must be initialized with RODOS db connection"
         if (project_uid==None and values==None):
-            raise RodosPyException( "Either project uid or velues dict must be defined" )
+            raise RodosPyException( 
+                "Either project uid or velues dict must be defined" 
+            )
         self.rodos = rodos
         if project_uid:
             for p in rodos.projects:
@@ -210,7 +213,9 @@ class Task(object):
         if self.project.details==None:
             self.project.get_project_details()
         if (task_path==None and values==None):
-            raise RodosPyException( "Either task uid or velues dict must be defined" )
+            raise RodosPyException( 
+                "Either task uid or velues dict must be defined" 
+            )
         if task_path:
             for t in project.tasks():
                 if t.path==task_path:
@@ -345,7 +350,8 @@ class DataItem(object):
     def save_gml(self,filename=None,force=False):
         if not filename:
            filename = self.rodos.storage + "/%s%s%i%i.gml" % \
-                (self.dataset.task.task_uid,self.dataset.path,self.t_index,self.z_index)
+                (self.dataset.task.task_uid,self.dataset.path,\
+                 self.t_index,self.z_index)
         if (os.path.exists(filename) and force==False):
             return filename
         wps_run = self.rodos.wps.execute('gs:JRodosWPS',self.wps_input)
