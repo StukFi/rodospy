@@ -5,7 +5,12 @@ import ogr
 import os
 from datetime import datetime, timedelta
 from copy import copy
-import urllib
+try: # python3
+    from urllib.request import Request
+    from urllib.request import urlopen
+except ImportError: # python2
+    from urllib2 import Request
+    from urllib2 import urlopen
 import json
 import codecs
 from xml.etree.ElementTree import XML, fromstring, tostring
@@ -90,9 +95,9 @@ class RodosConnection(object):
         if settings==None:
             # try to read from config file
             raise RodosPyException( "No settings defined" )
-        self.w = db_settings["wps"]
+        self.w = settings["wps"]
         self.wps = WebProcessingService(self.w["url"], 
-                                        verbose=True, 
+                                        verbose=False, # set this True when debugging
                                         skip_caps=True)
         self.storage = self.w["file_storage"]
         # check that connections are OK
@@ -121,10 +126,10 @@ class RodosConnection(object):
         project_uid as parameter if only one project information wanted."
         """
         data_val = meta_xml.replace("\n","").encode("utf-8")
-        req = urllib.request.Request ( self.w["url"],
-                                       data = data_val, 
-                                       headers = xml_headers)
-        response = urllib.request.urlopen( req )
+        req = Request ( self.w["url"],
+                        data = data_val, 
+                        headers = xml_headers)
+        response = urlopen( req )
         proj_dict = json.load(reader(response))["rodos_projects"]
         projects = []
         for p in proj_dict:
@@ -177,10 +182,10 @@ class Project(object):
         "get details of the project. fetch only when necessary"
         data_val = meta_xml.replace("\n","").replace\
                 ("all","projectuid=" + self.uid).encode("utf-8")
-        req = urllib.request.Request ( self.rodos.w["url"],
-                                       data = data_val, 
-                                       headers = xml_headers)
-        response = urllib.request.urlopen( req )
+        req = Request ( self.rodos.w["url"],
+                        data = data_val, 
+                        headers = xml_headers)
+        response = urlopen( req )
         self.details = json.load( reader(response) )["rodos_results"]
 
     def tasks(self):
@@ -325,7 +330,7 @@ class DataItem(object):
         self.nuclide = nuclide
         self.wps_input = [
             ('taskArg', 
-             "taskuid='%s'" % self.dataset.task.task_uid),
+             "taskuid='%s'" % self.dataset.task.path),
             ('dataitem',
              "path='%s'" % self.dataset.path),
             ('columns', str(t_index)), # only one column per data layer
@@ -350,8 +355,10 @@ class DataItem(object):
     def save_gml(self,filename=None,force=False):
         if not filename:
            filename = self.rodos.storage + "/%s%s%i%i.gml" % \
-                (self.dataset.task.task_uid,self.dataset.path,\
-                 self.t_index,self.z_index)
+                (self.dataset.task.path,
+                 self.dataset.path.replace(" ","_").replace("=;=","_"),
+                 self.t_index,
+                 self.z_index)
         if (os.path.exists(filename) and force==False):
             return filename
         wps_run = self.rodos.wps.execute('gs:JRodosWPS',self.wps_input)
