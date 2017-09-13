@@ -39,6 +39,7 @@ for p in projects:
             for ti in time_indices:
                 dataitem = DataItem(dataset,ti)
                 cases[c]["files"].append ( dataitem.gml )
+                cases[c]["projection"] = dataitem.projection
     if found>=len(cases):
         break
     else:

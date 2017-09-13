@@ -354,9 +354,9 @@ class DataItem(object):
 
     def save_gml(self,filename=None,force=False):
         if not filename:
-           filename = self.rodos.storage + "/%s%s%i%i.gml" % \
-                (self.dataset.task.path,
-                 self.dataset.path.replace(" ","_").replace("=;=","_"),
+           filename = self.rodos.storage + "/%s_%s_%02d_%01d.gml" % \
+                (self.dataset.task.project.name,
+                 self.dataset.name.replace(" ","_"),
                  self.t_index,
                  self.z_index)
         if (os.path.exists(filename) and force==False):
