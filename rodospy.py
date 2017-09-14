@@ -351,6 +351,9 @@ class DataItem(object):
         self.srs = osr.SpatialReference()
         self.srs.ImportFromEPSG( int(p.split(":")[-1]) )
         # coordinate transfrom operator
+        # store time value
+        if self.dataset.times:
+            self.timestamp = self.dataset.times[t_index]
 
     def save_gml(self,filename=None,force=False):
         if not filename:

@@ -36,10 +36,12 @@ for p in projects:
                     break
             # save gml files
             cases[c]["files"] = []
+            cases[c]["times"] = []
             for ti in time_indices:
                 dataitem = DataItem(dataset,ti)
                 cases[c]["files"].append ( dataitem.gml )
                 cases[c]["projection"] = dataitem.projection
+                cases[c]["times"].append ( dataitem.timestamp )
     if found>=len(cases):
         break
     else:
