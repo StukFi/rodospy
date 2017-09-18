@@ -46,5 +46,9 @@ for p in projects:
         break
     else:
         continue
-
 print ( cases )
+
+# Jatko:
+# 1. Tee mapnik-pohjalle kartat 2x2 jossa molemmat tapaukset
+# 2. Käytä siinä pohjakarttaa jossa projektion on cases[".."]["projection"] ja rajat GML-tiedoston cases[".."]["files"][N] BBOX
+# 3. Kirjoita lisäksi johonkin alkuaika ja kuvien alle tarkasteluajat cases["..."][times][N]
