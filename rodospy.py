@@ -370,6 +370,11 @@ class DataItem(object):
         wps_run.getOutput ( filename )
         return filename
 
+    def envelope(self):
+        gml_data = gml_driver.Open(self.gml)
+        layer = gml_data.GetLayer()
+        return layer.GetExtent()
+
     def valueAtLonLat(self,lon,lat):
         "read value at lon/lat point"
         transform = osr.CoordinateTransformation(wgs84_cs,self.srs)
