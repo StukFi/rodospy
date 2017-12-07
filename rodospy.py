@@ -313,7 +313,6 @@ class Dataset(object):
         self.nuclides = nuclides
         self.default_nuclide = default
 
-    
     def get_levels(self):
         "read height values"
         return ["TODO"]
