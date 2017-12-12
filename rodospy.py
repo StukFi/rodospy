@@ -76,6 +76,28 @@ def time_formatter(time_string):
             '%Y-%m-%dT%H:%M:%SZ')
     return time_value
 
+def to_rodos_nuclide(nuclide):
+    "Convert nuclide string to Rodos format inherited from 80s"
+    n = nuclide.split("-")
+    element = n[0]
+    mass = n[1]
+    nuc_string = element
+    if len(element)==1:
+        nuc_string += " "
+    nuc_string += "-"
+    if len(mass)==2:
+        nuc_string += " "
+    elif len(mass)==1:
+        nuc_string += "  "
+    nuc_string += mass
+    return nuc_string
+
+def from_rodos_nuclide(nuclide):
+    n = nuclide.split("-")
+    n[0] = n[0].strip()
+    n[1] = n[1].strip()
+    return n[0] + "-" + n[1]
+
 class RodosPyException(Exception):
     "Module specific exception"
     pass
@@ -310,8 +332,8 @@ class Dataset(object):
                             if f["param"]=="nuclide":
                                 nuclides = f["allowedValues"]
                                 default = f["defaultValue"]
-        self.nuclides = nuclides
-        self.default_nuclide = default
+        self.nuclides = map(from_rodos_nuclide,nuclides)
+        self.default_nuclide = from_rodos_nuclide(default)
 
     def get_levels(self):
         "read height values"
@@ -321,7 +343,7 @@ class DataItem(object):
     """ 
     Single 2D dataset.
     """
-    def __init__(self,dataset,t_index=0,z_index=0,nuclide=None):
+    def __init__(self,dataset,t_index=0,nuclide=None,z_index=0):
         self.dataset = dataset
         self.rodos = dataset.rodos
         self.t_index = t_index
@@ -336,6 +358,11 @@ class DataItem(object):
             ('vertical', str(z_index)),
             ('threshold', str(0)) # TODO: add threshold support
         ]
+        if nuclide!=None:
+            # add nuclide to path parameter
+            self.wps_input[1] = (self.wps_input[1][0],
+                                 self.wps_input[1][1][:-1]\
+                                 + to_rodos_nuclide(nuclide) + "'")
         self.gml = self.save_gml()
         #read projection from gml
         gml_data = open(self.gml).read()
@@ -348,7 +375,11 @@ class DataItem(object):
         self.projection = p # human readable
         # GDAL projection
         self.srs = osr.SpatialReference()
-        self.srs.ImportFromEPSG( int(p.split(":")[-1]) )
+        try:
+            self.srs.ImportFromEPSG( int(p.split(":")[-1]) )
+        except ValueError:
+            # no features, no projection
+            self.srs = None
         # coordinate transfrom operator
         # store time value
         if self.dataset.times:
@@ -356,11 +387,16 @@ class DataItem(object):
 
     def save_gml(self,filename=None,force=False):
         if not filename:
-           filename = self.rodos.storage + "/%s_%s_%02d_%01d.gml" % \
+            if self.nuclide:
+                nuclide = self.nuclide
+            else:
+                nuclide = ""
+            filename = self.rodos.storage + "/%s_%s_%02d_%01d%s.gml" % \
                 (self.dataset.task.project.name,
                  self.dataset.name.replace(" ","_"),
                  self.t_index,
-                 self.z_index)
+                 self.z_index,
+                 nuclide)
         if (os.path.exists(filename) and force==False):
             return filename
         wps_run = self.rodos.wps.execute('gs:JRodosWPS',self.wps_input)
@@ -376,6 +412,8 @@ class DataItem(object):
 
     def valueAtLonLat(self,lon,lat):
         "read value at lon/lat point"
+        if self.srs==None: # no features
+            return None
         transform = osr.CoordinateTransformation(wgs84_cs,self.srs)
         x,y,dummy = transform.TransformPoint(lon,lat)
         gml_data = gml_driver.Open(self.gml)
