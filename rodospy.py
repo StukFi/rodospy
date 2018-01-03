@@ -320,7 +320,7 @@ class Dataset(object):
                             self.default_time = f["defaultValue"]
                             break
         self.default_time = time_formatter(self.default_time)
-        self.times = map(time_formatter,self.times)
+        self.times = list(map(time_formatter,self.times))
 
     def get_nuclides(self):
         "read nuclides"
@@ -332,7 +332,7 @@ class Dataset(object):
                             if f["param"]=="nuclide":
                                 nuclides = f["allowedValues"]
                                 default = f["defaultValue"]
-        self.nuclides = map(from_rodos_nuclide,nuclides)
+        self.nuclides = list(map(from_rodos_nuclide,nuclides))
         self.default_nuclide = from_rodos_nuclide(default)
 
     def get_levels(self):
@@ -421,7 +421,7 @@ class DataItem(object):
         wkt = "POINT (%f %f)" % (x,y)
         layer.SetSpatialFilter(ogr.CreateGeometryFromWkt(wkt))
         for feature in layer:
-            return feature.GetField("Value") 
+            return float(feature.GetField("Value") )
 
     def areaExceeding(self,value):
         "calculate area where value is exceeded"
