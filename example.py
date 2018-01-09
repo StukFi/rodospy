@@ -44,8 +44,11 @@ dataset = datasets[random.randint( 0, len(datasets)-1 )]
 # iterate over timestep indices, from 0 to 23
 # first iteration is slow because results are not cached
 items = []
-for i in range(24):
-    items.append(DataItem(dataset,i,0))
+if dataset.times:
+    for i in range(len(dataset.times)):
+        items.append(DataItem(dataset,i,0))
+else:
+    items.append( DataItem(dataset,0,0) )
 """
 # iterate over items and read max values
 # this is fast because results already exist on disk

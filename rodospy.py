@@ -358,7 +358,7 @@ class DataItem(object):
             ('vertical', str(z_index)),
             ('threshold', str(0)) # TODO: add threshold support
         ]
-        if nuclide!=None:
+        if nuclide:
             # add nuclide to path parameter
             self.wps_input[1] = (self.wps_input[1][0],
                                  self.wps_input[1][1][:-1]\
