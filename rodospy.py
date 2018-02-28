@@ -204,6 +204,7 @@ class Project(object):
         "get details of the project. fetch only when necessary"
         data_val = meta_xml.replace("\n","").replace\
                 ("all","projectuid=" + self.uid).encode("utf-8")
+        #data_val = meta_xml.replace("\n","").encode("utf-8")
         req = Request ( self.rodos.w["url"],
                         data = data_val, 
                         headers = xml_headers)
@@ -422,6 +423,61 @@ class DataItem(object):
         layer.SetSpatialFilter(ogr.CreateGeometryFromWkt(wkt))
         for feature in layer:
             return float(feature.GetField("Value") )
+
+    def regrid(self,lonmin,latmin,lonmax,latmax,dx,dy,method="linear"):
+        "regrid data"
+        # TODO: not implemented!
+        if self.srs==None: # no features
+            return None
+        # generate polygon of lon/lat bbox to filter points
+        C = 10 # make sure every point in included
+        wkt_bbox = "POLYGON (( %f %f, %f %f, %f %f, %f %f, %f %f ))" %\
+            (lonmin-(C*dx), 
+             latmin-(C*dy), 
+             lonmin-(C*dx), 
+             latmax+(C*dy), 
+             lonmax+(C*dx), 
+             latmax+(C*dy), 
+             lonmin-(C*dx), 
+             latmax+(C*dy), 
+             lonmin-(C*dx), 
+             latmin-(C*dy))
+        transform = osr.CoordinateTransformation(wgs84_cs,self.srs)
+        polygon = ogr.CreateGeometryFromWkt( wkt_bbox )
+        polygon.Transform ( transform )
+        gml_data = gml_driver.Open(self.gml)
+        layer = gml_data.GetLayer()
+        points = []
+        values = []
+        transform2 = osr.CoordinateTransformation(self.srs,wgs84_cs)
+        for feature in layer:
+            geom = feature.GetGeometryRef()
+            if geom.Intersects( polygon ):
+                centroid = geom.Centroid()
+                centroid.Transform ( transform2 )
+                lon = centroid.GetX()
+                lat = centroid.GetY()
+                value = float(feature.GetField("Value"))
+                points.append( (lon,lat) )
+                values.append ( value )
+        return points,values
+
+    def valuesAtGeometry(self,wkt_geometry):
+        "read multiple values at lon/lat geometry"
+        if self.srs==None: # no features
+            return None
+        transform = osr.CoordinateTransformation(wgs84_cs,self.srs)
+        geom = ogr.CreateGeometryFromWkt( wkt_geometry )
+        geom.Transform ( transform )
+        gml_data = gml_driver.Open(self.gml)
+        layer = gml_data.GetLayer()
+        values = []
+        for feature in layer:
+            data_geom = feature.GetGeometryRef()
+            if data_geom.Intersects( geom ):
+                value = float(feature.GetField("Value"))
+                values.append ( value )
+        return values
 
     def areaExceeding(self,value):
         "calculate area where value is exceeded"
