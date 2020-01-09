@@ -34,9 +34,10 @@ project = projects[1]
 print ("Got project " + project.name)
 project.load()
 tasks = project.tasks
-print ("Project '%s' has tasks %s" % (project.name,tasks))
+#print ("Project '%s' has tasks %s" % (project.name,tasks))
 task = tasks[0]
-print ( task.gridseries )
+# save gamma dose rates at timestep 2
+gpkg_path = task.total_gamma_dose_rate.save_gpkg("output")
 
 ## TODO: Products is not implemented yet
 #datasets = task.datasets()

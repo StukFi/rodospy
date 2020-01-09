@@ -9,8 +9,12 @@ from urllib.request import Request
 from urllib.request import urlopen
 import json
 import codecs
+import tempfile
+import base64
+import zipfile
 from dateutil.parser import parse
 from xml.etree.ElementTree import XML, fromstring, tostring
+from pathlib import Path
 # standard logging
 import logging
 logger = logging.getLogger('rodospy')
@@ -188,6 +192,62 @@ class Task(object):
         for d in tdict["dataitems"]:
             if d["dataitem_type"]=="GridSeries":
                 self.gridseries.append( GridSeries(self,d) )
+        self.deposition = {}
+        self.wet_deposition = {}
+        self.dry_deposition = {}
+        self.air_concentration = {}
+        self.time_integrated_air_concentration = {}
+        self.total_deposition = {}
+        self.ground_gamma_dose_rate = {}
+        self.total_dose = {}
+        self.cloud_dose = {}
+        self.ground_dose = {}
+        self.inhalation_dose = {}
+        self.skin_dose = {}
+        
+        # classify grid series to dictionaries
+        # TODO: some items still missing (FDMT, Emersim, DEPOM etc.)
+        for i in self.gridseries:
+            try:
+                i.nuclide = from_rodos_nuclide(i.name)
+            except IndexError: # not nuclide dependent
+                i.nuclide = None
+            if i.groupname=="ground.contamination":
+                self.deposition[i.nuclide] = i
+            elif i.groupname=="ground.contamination.wet":
+                self.wet_deposition[i.nuclide] = i
+            elif i.groupname=="ground.contamination.dry":
+                self.wet_deposition[i.nuclide] = i
+            elif i.groupname=="air.concentration.near.ground.surface":
+                self.air_concentration[i.nuclide] = i
+            elif i.groupname==\
+                "air.concentration.time.integrated.near.ground.surface":
+                self.time_integrated_air_concentration[i.nuclide] = i
+            elif i.groupname=="air.concentration.instantaneous.exceeded":
+                self.concentration_exceeded = i
+            elif i.groupname=="Graphical_Aerosol":
+                self.total_deposition["aerosol"] = i
+            elif i.groupname=="Graphical_Iodine":
+                self.total_deposition["iodine"] = i
+            elif i.groupname=="total.gamma.dose.rate":
+                self.total_gamma_dose_rate = i
+            elif i.groupname=="DOSRCL":
+                self.cloud_total_gamma_dose_rate = i
+            elif i.groupname=="DRNUGR":
+                self.ground_gamma_dose_rate[i.nuclide] = i
+            elif i.groupname=="total.dose":
+                self.total_dose[i.name] = i
+            elif i.groupname=="cloud.dose":
+                self.cloud_dose[i.name] = i
+            elif i.groupname=="ground.dose":
+                self.ground_dose[i.name] = i
+            elif i.groupname=="inhalation.dose":
+                self.inhalation_dose[i.name] = i
+            elif i.groupname=="skin.dose":
+                self.skin_dose[i.name] = i
+            elif i.groupname=="total.dose.nuclide.specific":
+                self.total_dose[i.name] = i
+
 
 class GridSeries(object):
     "Series of grid results"
@@ -200,6 +260,66 @@ class GridSeries(object):
         self.rodos = task.rodos
         for key in ddict:
             setattr(self,key,ddict[key])
+
+    def times(self):
+        return ["TODO"]
+
+    def levels(self):
+        return ["TODO"]
+
+   
+
+    def save_gpkg(self,output_dir="output",force=True):
+        "Read and save GML file from WPS service"
+        if not output_dir:
+            # TODO:
+            if self.nuclide:
+                nuclide = self.nuclide
+            else:
+                 nuclide = ""
+            filename = self.rodos.storage + "/%s_%s_%02d_%01d%s.gml" % \
+                (self.dataset.task.project.name,
+                 self.dataset.name.replace(" ","_"),
+                 self.t_index,
+                 self.z_index,
+                 nuclide)
+        #if (os.path.exists(filename) and force==False):
+        #    return filename
+        wps_input = [
+                ('taskArg', 
+                 "project='{}'&amp;model='{}'".format(self.task.project.name,\
+                                                      self.task.project.modelchainname)),
+                ('dataitem',
+                 "path='%s'" % self.datapath),
+                ('columns', "0-"), # get the whole dataset
+                ('vertical', "0"), # TODO: think!
+                ('includeSLD', "1"),
+                ('threshold', "1e-15") # TODO: add threshold support
+            ]
+        wps_run = self.rodos.wps.execute('gs:JRodosGeopkgWPS',wps_input)
+        logger.debug ( "Execute WPS with values %s" % (str(wps_input)) )
+        temp = tempfile.NamedTemporaryFile() #2
+        temp_zip = tempfile.NamedTemporaryFile() #2
+        try:
+            #wps_run.getOutput ( temp.name )
+            wps_run.getOutput ( "eka.txt" )
+            # base 64 decode
+            data = open("eka.txt", "r").read()
+            print ( len(data) )
+            decoded = base64.urlsafe_b64decode(data)
+            print ( len (decoded) )
+            zip_output = open("toka.zip","wb")
+            zip_output.write( decoded )
+            zip_output.close()
+            #unzip!
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile("toka.zip", 'r') as zip_ref:
+                zip_ref.extractall(output_dir)
+        finally:
+            temp.close() 
+            temp_zip.close()
+        return output_files
+         
 
 #class Dataset(object):
 #    """
