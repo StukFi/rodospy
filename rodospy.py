@@ -328,6 +328,7 @@ class GridSeries(object):
         layer = gis_data.GetLayer(2) # view
         max_value = 0
         geom_wkt = None
+        timestamp = None
         for feature in layer:
             value = feature.GetField("Value")
             if value>max_value:
@@ -342,7 +343,9 @@ class GridSeries(object):
             lon,lat,dummy = transform.TransformPoint(point.GetX(),point.GetY())
         else:
             lon,lat = None, None
-        return (max_value,(lon,lat),datetime.fromtimestamp(timestamp))
+        if max_value>0:
+            timestamp = datetime.fromtimestamp(timestamp)
+        return (max_value,(lon,lat),timestamp)
 
 #class Dataset(object):
 #    """

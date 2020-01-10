@@ -14,7 +14,8 @@ settings = {
 
 from rodospy import *
 # set debug level logging
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)
 import random
 
 # create connection
@@ -29,7 +30,7 @@ print ( projects )
 # Choose random project
 project = projects[random.randint( 0, len(projects)-1 )]
 # Choose the latest project
-project = projects[1]
+project = projects[2]
 # print name
 print ("Got project " + project.name)
 project.load()
@@ -38,8 +39,14 @@ tasks = project.tasks
 task = tasks[0]
 # save gamma dose rates at timestep 2
 gpkg_path = task.total_gamma_dose_rate.gpkg_file()
-print ( task.total_gamma_dose_rate.max() )
 
+# iterate over depositions
+for nuclide in task.deposition.keys():
+    grid = task.deposition[nuclide]
+    max_value = grid.max()
+    print (nuclide)
+    print (max_value)
+    
 ## TODO: Products is not implemented yet
 #datasets = task.datasets()
 #print ("Task '%s' has following products:" % task.path)
