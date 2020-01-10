@@ -39,6 +39,7 @@ owslib_log.setLevel(logging.DEBUG)
 wgs84_cs = osr.SpatialReference()
 wgs84_cs.ImportFromEPSG(4326)
 gml_driver = ogr.GetDriverByName('GML')
+gpkg_driver = ogr.GetDriverByName('GPKG')
 
 def datetime_parser(value):
     if isinstance(value, dict):
@@ -272,16 +273,16 @@ class GridSeries(object):
     def levels(self):
         return ["TODO"]
 
-    def outputdir(self):
-
-        return output_dir
-   
     def get_filepath(self):
         "generate filepath if check if it does exists"
         if not os.path.isdir(self.output_dir):
             self.save_gpkg()
-        return self.filepath
+        return self.output_dir
     
+    def gpkg_file(self):
+        "get full path of gpkg file"
+        return self.get_filepath() + "/" + os.listdir( self.get_filepath() )[0]
+
     def save_gpkg(self,output_dir=None,force=True):
         "Read and save GML file from WPS service"
         if output_dir==None:
@@ -320,6 +321,27 @@ class GridSeries(object):
             temp.close() 
         self.filepath = output_dir
         return self.filepath
+
+    def max(self):
+        "Get max value and its lon/lat location"
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(2) # view
+        max_value = 0
+        geom_wkt = None
+        for feature in layer:
+            value = feature.GetField("Value")
+            if value>max_value:
+                max_value = value
+                geom_wkt = feature.GetGeometryRef().ExportToWkt()
+        if geom_wkt!=None:
+            transform = osr.CoordinateTransformation(layer.GetSpatialRef(),wgs84_cs)
+            polygon = ogr.CreateGeometryFromWkt(geom_wkt)
+            # use point instead of polygon
+            point = polygon.PointOnSurface()
+            lon,lat,dummy = transform.TransformPoint(point.GetX(),point.GetY())
+        else:
+            lon,lat = None, None
+        return (max_value,(lon,lat))
 
 #class Dataset(object):
 #    """

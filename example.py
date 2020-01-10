@@ -37,8 +37,8 @@ tasks = project.tasks
 #print ("Project '%s' has tasks %s" % (project.name,tasks))
 task = tasks[0]
 # save gamma dose rates at timestep 2
-gpkg_path = task.total_gamma_dose_rate.get_filepath()
-print ( gpkg_path )
+gpkg_path = task.total_gamma_dose_rate.gpkg_file()
+print ( task.total_gamma_dose_rate.max() )
 
 ## TODO: Products is not implemented yet
 #datasets = task.datasets()
