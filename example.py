@@ -4,7 +4,7 @@ settings = {
         # it's enough to change host and port
         "url": "http://localhost:8080/geoserver/wps",
         # Local storage of GML files, must be writeable
-        "file_storage": "/tmp"
+        "file_storage": "/tmp/jrodoswps"
     },
     "rest": {
         # TOMCAT rest service URL
@@ -37,7 +37,8 @@ tasks = project.tasks
 #print ("Project '%s' has tasks %s" % (project.name,tasks))
 task = tasks[0]
 # save gamma dose rates at timestep 2
-gpkg_path = task.total_gamma_dose_rate.save_gpkg("output")
+gpkg_path = task.total_gamma_dose_rate.get_filepath()
+print ( gpkg_path )
 
 ## TODO: Products is not implemented yet
 #datasets = task.datasets()

@@ -258,8 +258,13 @@ class GridSeries(object):
         self.task = task
         self.project = task.project
         self.rodos = task.rodos
+        self.gpkgfile = None
         for key in ddict:
             setattr(self,key,ddict[key])
+        self.output_dir = "{}/{}/{}/{}".format(self.rodos.storage,
+                                               self.task.project.name,
+                                               self.task.project.modelchainname,
+                                               self.datapath.replace(" ","_"))
 
     def times(self):
         return ["TODO"]
@@ -267,24 +272,20 @@ class GridSeries(object):
     def levels(self):
         return ["TODO"]
 
-   
+    def outputdir(self):
 
-    def save_gpkg(self,output_dir="output",force=True):
+        return output_dir
+   
+    def get_filepath(self):
+        "generate filepath if check if it does exists"
+        if not os.path.isdir(self.output_dir):
+            self.save_gpkg()
+        return self.filepath
+    
+    def save_gpkg(self,output_dir=None,force=True):
         "Read and save GML file from WPS service"
-        if not output_dir:
-            # TODO:
-            if self.nuclide:
-                nuclide = self.nuclide
-            else:
-                 nuclide = ""
-            filename = self.rodos.storage + "/%s_%s_%02d_%01d%s.gml" % \
-                (self.dataset.task.project.name,
-                 self.dataset.name.replace(" ","_"),
-                 self.t_index,
-                 self.z_index,
-                 nuclide)
-        #if (os.path.exists(filename) and force==False):
-        #    return filename
+        if output_dir==None:
+            output_dir = self.output_dir
         wps_input = [
                 ('taskArg', 
                  "project='{}'&amp;model='{}'".format(self.task.project.name,\
@@ -296,30 +297,29 @@ class GridSeries(object):
                 ('includeSLD', "1"),
                 ('threshold', "1e-15") # TODO: add threshold support
             ]
-        wps_run = self.rodos.wps.execute('gs:JRodosGeopkgWPS',wps_input)
+        x = open("request_template.xml").read()
+        x = x.replace("TASKARG",wps_input[0][1])
+        x = x.replace("DATAITEM",wps_input[1][1])
+        x = x.replace("COLUMNS",wps_input[2][1])
+        x = x.replace("THRESHOLD",wps_input[5][1])
+        #wps_run = self.rodos.wps.execute('gs:JRodosGeopkgWPS',wps_input)
+        req = Request ( self.rodos.w["url"],
+                        data = x.encode(), 
+                        headers = xml_headers)
         logger.debug ( "Execute WPS with values %s" % (str(wps_input)) )
+        response = urlopen( req )
         temp = tempfile.NamedTemporaryFile() #2
-        temp_zip = tempfile.NamedTemporaryFile() #2
         try:
-            #wps_run.getOutput ( temp.name )
-            wps_run.getOutput ( "eka.txt" )
-            # base 64 decode
-            data = open("eka.txt", "r").read()
-            print ( len(data) )
-            decoded = base64.urlsafe_b64decode(data)
-            print ( len (decoded) )
-            zip_output = open("toka.zip","wb")
-            zip_output.write( decoded )
-            zip_output.close()
-            #unzip!
+            resp_file = open(temp.name, "wb")
+            resp_file.write( response.read() )
+            resp_file.close()
             Path(output_dir).mkdir(parents=True, exist_ok=True)
-            with zipfile.ZipFile("toka.zip", 'r') as zip_ref:
+            with zipfile.ZipFile(temp.name, 'r') as zip_ref:
                 zip_ref.extractall(output_dir)
         finally:
             temp.close() 
-            temp_zip.close()
-        return output_files
-         
+        self.filepath = output_dir
+        return self.filepath
 
 #class Dataset(object):
 #    """
