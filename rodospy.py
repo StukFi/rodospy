@@ -342,7 +342,7 @@ class GridSeries(object):
             lon,lat,dummy = transform.TransformPoint(point.GetX(),point.GetY())
         else:
             lon,lat = None, None
-        return (max_value,(lon,lat),timestamp)
+        return (max_value,(lon,lat),datetime.fromtimestamp(timestamp))
 
 #class Dataset(object):
 #    """
