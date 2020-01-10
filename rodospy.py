@@ -333,6 +333,7 @@ class GridSeries(object):
             if value>max_value:
                 max_value = value
                 geom_wkt = feature.GetGeometryRef().ExportToWkt()
+                timestamp = feature.GetField("Time")
         if geom_wkt!=None:
             transform = osr.CoordinateTransformation(layer.GetSpatialRef(),wgs84_cs)
             polygon = ogr.CreateGeometryFromWkt(geom_wkt)
@@ -341,7 +342,7 @@ class GridSeries(object):
             lon,lat,dummy = transform.TransformPoint(point.GetX(),point.GetY())
         else:
             lon,lat = None, None
-        return (max_value,(lon,lat))
+        return (max_value,(lon,lat),timestamp)
 
 #class Dataset(object):
 #    """
