@@ -4,13 +4,11 @@ import osr
 import ogr
 import os
 from datetime import datetime, timedelta
-from copy import copy
 from urllib.request import Request
 from urllib.request import urlopen
 import json
 import codecs
 import tempfile
-import base64
 import zipfile
 from dateutil.parser import parse
 from xml.etree.ElementTree import XML, fromstring, tostring
@@ -31,11 +29,11 @@ logger.addHandler(ch)
 reader = codecs.getreader("utf-8")
 xml_headers = { 'Content-Type': 'application/xml' }
 
-owslib_log = logging.getLogger('owslib')
 # Add formatting and handlers as needed
+owslib_log = logging.getLogger('owslib')
 owslib_log.setLevel(logging.DEBUG)
 
-# GDAL contants
+# GDAL constants
 wgs84_cs = osr.SpatialReference()
 wgs84_cs.ImportFromEPSG(4326)
 gml_driver = ogr.GetDriverByName('GML')
@@ -249,7 +247,6 @@ class Task(object):
             elif i.groupname=="total.dose.nuclide.specific":
                 self.total_dose[i.name] = i
 
-
 class GridSeries(object):
     "Series of grid results"
     def __repr__(self):
@@ -268,7 +265,18 @@ class GridSeries(object):
                                                self.datapath.replace(" ","_"))
 
     def times(self):
-        return ["TODO"]
+        "Read timestamps of data"
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(1) # data layer
+        times = []
+        for feature in layer:
+            time_value = feature.GetField ( "Time" )
+            #unique times
+            if not time_value in times:
+                times.append(time_value)
+        times.sort()
+        # convert epoch times to datetime objects
+        return list(map(datetime.fromtimestamp,times))
 
     def levels(self):
         return ["TODO"]
@@ -284,7 +292,7 @@ class GridSeries(object):
         return self.get_filepath() + "/" + os.listdir( self.get_filepath() )[0]
 
     def save_gpkg(self,output_dir=None,force=True):
-        "Read and save GML file from WPS service"
+        "Read and save GeoPackage file from WPS service"
         if output_dir==None:
             output_dir = self.output_dir
         wps_input = [
@@ -322,10 +330,21 @@ class GridSeries(object):
         self.filepath = output_dir
         return self.filepath
 
-    def max(self):
-        "Get max value and its lon/lat location"
+    def envelope(self):
+        gml_data = gpkg_driver.Open(self.gml)
+        layer = gml_data.GetLayer(0) # grid
+        return layer.GetExtent()    
+
+    def max(self,time_value=None):
+        """
+        Get max value and its lon/lat location
+        Filter by time value is supported.
+        """
         gis_data = gpkg_driver.Open(self.gpkg_file())
         layer = gis_data.GetLayer(2) # view
+        if time_value!=None:
+            epoch_time = int(time_value.timestamp())
+            layer.SetAttributeFilter( "Time={:d}".format(epoch_time) )
         max_value = 0
         geom_wkt = None
         timestamp = None
