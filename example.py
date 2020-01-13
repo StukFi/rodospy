@@ -3,7 +3,8 @@ settings = {
         # URL for Geoserver WPS service
         # it's enough to change host and port
         "url": "http://localhost:8080/geoserver/wps",
-        # Local storage of GML files, must be writeable
+        # Local storage of GeoPackage files, must be writeable
+        # The directory will be created if it does not exist.
         "file_storage": "/tmp/jrodoswps"
     },
     "rest": {
@@ -38,10 +39,11 @@ tasks = project.tasks
 # Emergency project has only 1 task
 task = tasks[0]
 
+# a few examples...
+
 # iterate over timestamps
 gamma_dose_rate  = task.total_gamma_dose_rate
 time_values = gamma_dose_rate.times()
-
 for timestamp in time_values:
     m = gamma_dose_rate.max(timestamp)
     if m[2]==None:
@@ -70,10 +72,3 @@ for nuclide in task.deposition.keys():
         max_tstamp)
     )
 
-## print area where 0.001 mSv/h is exceeded
-#for i in items:
-#    a = i.areaExceeding( 0.001 ) 
-#    print ( "Area at time index %i where 0.001 mSv/h is exceeded  is %f m2." % (i.t_index, a ) )
-#
-## see more methods from rodospy.py 
-#"""

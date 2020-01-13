@@ -40,6 +40,7 @@ gml_driver = ogr.GetDriverByName('GML')
 gpkg_driver = ogr.GetDriverByName('GPKG')
 
 def datetime_parser(value):
+    "datetime parser for json document"
     if isinstance(value, dict):
         for k, v in value.items():
             value[k] = datetime_parser(v)
@@ -53,34 +54,8 @@ def datetime_parser(value):
             pass
     return value
 
-def time_formatter(time_string):
-    "format rodos strings to python datetime objects"
-    # two possible time formats
-    try:
-        time_value = datetime.strptime( time_string.split(".")[0], \
-            '%Y-%m-%dT%H:%M:%S')
-    except ValueError:
-        time_value = datetime.strptime( time_string.split(".")[0], \
-            '%Y-%m-%dT%H:%M:%SZ')
-    return time_value
-
-def to_rodos_nuclide(nuclide):
-    "Convert nuclide string to Rodos format inherited from 80s"
-    n = nuclide.split("-")
-    element = n[0]
-    mass = n[1]
-    nuc_string = element
-    if len(element)==1:
-        nuc_string += " "
-    nuc_string += "-"
-    if len(mass)==2:
-        nuc_string += " "
-    elif len(mass)==1:
-        nuc_string += "  "
-    nuc_string += mass
-    return nuc_string
-
 def from_rodos_nuclide(nuclide):
+    "rodos nuclide has fixed string lenght"
     n = nuclide.split("-")
     n[0] = n[0].strip()
     n[1] = n[1].strip()
@@ -279,7 +254,8 @@ class GridSeries(object):
         return list(map(datetime.fromtimestamp,times))
 
     def levels(self):
-        return ["TODO"]
+        "TODO"
+        return []
 
     def get_filepath(self):
         "generate filepath if check if it does exists"
@@ -331,8 +307,9 @@ class GridSeries(object):
         return self.filepath
 
     def envelope(self):
-        gml_data = gpkg_driver.Open(self.gml)
-        layer = gml_data.GetLayer(0) # grid
+        "Get the bbox of data"
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(0) # grid
         return layer.GetExtent()    
 
     def max(self,time_value=None):
@@ -366,232 +343,16 @@ class GridSeries(object):
             timestamp = datetime.fromtimestamp(timestamp)
         return (max_value,(lon,lat),timestamp)
 
-#class Dataset(object):
-#    """
-#    JRodos dataset instance.
-#    May contain several times and levels
-#    """
-#    def __repr__(self):
-#        return ("<Task %s | %s>" % (self.task.name, self.path))
-#
-#    def __init__(self,task,values):
-#        self.rodos = task.rodos
-#        self.project = task.project
-#        self.task = task
-#        self.path = values["path"]
-#        self.unit = values["unit"]
-#        self.name = values["name"]
-#        self.params = values["params"]
-#        self.times = None
-#        self.nuclides = None
-#        self.levels = None
-#        self.default_time = None
-#        self.default_nuclide = None
-#        if "date" in self.params:
-#            self.get_times()
-#        if "nuclide" in self.params:
-#            self.get_nuclides()
-#        if "level" in self.params:
-#            self.get_levels()
-#
-#    def get_times(self):
-#        "read timestamps as Python objects" 
-#        for p in self.project.details["task"]:
-#            if p["path"]==self.task.path:
-#                for layer in p["layers"]:
-#                    if layer["path"]==self.path:
-#                        for f in layer["filters"]:
-#                            if f["param"]=="date":
-#                                times = f["allowedValues"]
-#                            self.times = times
-#                            self.default_time = f["defaultValue"]
-#                            break
-#        self.default_time = time_formatter(self.default_time)
-#        self.times = list(map(time_formatter,self.times))
-#
-#    def get_nuclides(self):
-#        "read nuclides"
-#        for p in self.project.details["task"]:
-#            if p["path"]==self.task.path:
-#                for layer in p["layers"]:
-#                    if layer["path"]==self.path:
-#                        for f in layer["filters"]:
-#                            if f["param"]=="nuclide":
-#                                nuclides = f["allowedValues"]
-#                                default = f["defaultValue"]
-#        self.nuclides = list(map(from_rodos_nuclide,nuclides))
-#        self.default_nuclide = from_rodos_nuclide(default)
-#
-#    def get_levels(self):
-#        "read height values"
-#        return ["TODO"]
-# 
-#class DataItem(object):
-#    """ 
-#    Single 2D dataset.
-#    """
-#    def __init__(self,dataset,t_index=0,nuclide=None,z_index=0):
-#        self.dataset = dataset
-#        self.rodos = dataset.rodos
-#        self.t_index = t_index
-#        self.z_index = z_index
-#        self.nuclide = nuclide
-#        self.wps_input = [
-#            ('taskArg', 
-#             "taskuid='%s'" % self.dataset.task.path),
-#            ('dataitem',
-#             "path='%s'" % self.dataset.path),
-#            ('columns', str(t_index)), # only one column per data layer
-#            ('vertical', str(z_index)),
-#            ('threshold', str(0)) # TODO: add threshold support
-#        ]
-#        if nuclide:
-#            # add nuclide to path parameter
-#            self.wps_input[1] = (self.wps_input[1][0],
-#                                 self.wps_input[1][1][:-1]\
-#                                 + to_rodos_nuclide(nuclide) + "'")
-#        self.gml = self.save_gml()
-#        #read projection from gml
-#        gml_data = open(self.gml).read()
-#        t = "epsg.xml#"
-#        ti = gml_data.find(t) + len(t)
-#        p = "epsg:"
-#        while gml_data[ti].isdigit():
-#            p += gml_data[ti]
-#            ti += 1
-#        self.projection = p # human readable
-#        # GDAL projection
-#        self.srs = osr.SpatialReference()
-#        try:
-#            self.srs.ImportFromEPSG( int(p.split(":")[-1]) )
-#        except ValueError:
-#            # no features, no projection
-#            self.srs = None
-#        # coordinate transfrom operator
-#        # store time value
-#        if self.dataset.times:
-#            self.timestamp = self.dataset.times[t_index]
-#
-#    def save_gml(self,filename=None,force=False):
-#        if not filename:
-#            if self.nuclide:
-#                nuclide = self.nuclide
-#            else:
-#                nuclide = ""
-#            filename = self.rodos.storage + "/%s_%s_%02d_%01d%s.gml" % \
-#                (self.dataset.task.project.name,
-#                 self.dataset.name.replace(" ","_"),
-#                 self.t_index,
-#                 self.z_index,
-#                 nuclide)
-#        if (os.path.exists(filename) and force==False):
-#            return filename
-#        wps_run = self.rodos.wps.execute('gs:JRodosWPS',self.wps_input)
-#
-#        logger.debug ( "Execute WPS with values %s" % (str(self.wps_input)) )
-#        wps_run.getOutput ( filename )
-#        return filename
-#
-#    def envelope(self):
-#        gml_data = gml_driver.Open(self.gml)
-#        layer = gml_data.GetLayer()
-#        return layer.GetExtent()
-#
-#    def valueAtLonLat(self,lon,lat):
-#        "read value at lon/lat point"
-#        if self.srs==None: # no features
-#            return None
-#        transform = osr.CoordinateTransformation(wgs84_cs,self.srs)
-#        x,y,dummy = transform.TransformPoint(lon,lat)
-#        gml_data = gml_driver.Open(self.gml)
-#        layer = gml_data.GetLayer()
-#        wkt = "POINT (%f %f)" % (x,y)
-#        layer.SetSpatialFilter(ogr.CreateGeometryFromWkt(wkt))
-#        for feature in layer:
-#            return float(feature.GetField("Value") )
-#
-#    def regrid(self,lonmin,latmin,lonmax,latmax,dx,dy,method="linear"):
-#        "regrid data"
-#        # TODO: not implemented!
-#        if self.srs==None: # no features
-#            return None
-#        # generate polygon of lon/lat bbox to filter points
-#        C = 10 # make sure every point in included
-#        wkt_bbox = "POLYGON (( %f %f, %f %f, %f %f, %f %f, %f %f ))" %\
-#            (lonmin-(C*dx), 
-#             latmin-(C*dy), 
-#             lonmin-(C*dx), 
-#             latmax+(C*dy), 
-#             lonmax+(C*dx), 
-#             latmax+(C*dy), 
-#             lonmin-(C*dx), 
-#             latmax+(C*dy), 
-#             lonmin-(C*dx), 
-#             latmin-(C*dy))
-#        transform = osr.CoordinateTransformation(wgs84_cs,self.srs)
-#        polygon = ogr.CreateGeometryFromWkt( wkt_bbox )
-#        polygon.Transform ( transform )
-#        gml_data = gml_driver.Open(self.gml)
-#        layer = gml_data.GetLayer()
-#        points = []
-#        values = []
-#        transform2 = osr.CoordinateTransformation(self.srs,wgs84_cs)
-#        for feature in layer:
-#            geom = feature.GetGeometryRef()
-#            if geom.Intersects( polygon ):
-#                centroid = geom.Centroid()
-#                centroid.Transform ( transform2 )
-#                lon = centroid.GetX()
-#                lat = centroid.GetY()
-#                value = float(feature.GetField("Value"))
-#                points.append( (lon,lat) )
-#                values.append ( value )
-#        return points,values
-#
-#    def valuesAtGeometry(self,wkt_geometry):
-#        "read multiple values at lon/lat geometry"
-#        if self.srs==None: # no features
-#            return None
-#        transform = osr.CoordinateTransformation(wgs84_cs,self.srs)
-#        geom = ogr.CreateGeometryFromWkt( wkt_geometry )
-#        geom.Transform ( transform )
-#        gml_data = gml_driver.Open(self.gml)
-#        layer = gml_data.GetLayer()
-#        values = []
-#        for feature in layer:
-#            data_geom = feature.GetGeometryRef()
-#            if data_geom.Intersects( geom ):
-#                value = float(feature.GetField("Value"))
-#                values.append ( value )
-#        return values
-#
-#    def areaExceeding(self,value):
-#        "calculate area where value is exceeded"
-#        gml_data = gml_driver.Open(self.gml)
-#        layer = gml_data.GetLayer()
-#        layer.SetAttributeFilter( "Value > %f" % value )
-#        area = 0
-#        for feature in layer:
-#            area += feature.GetGeometryRef().GetArea()
-#        return area
-#
-#    def max(self):
-#        "Get max value and its lon/lat location"
-#        gml_data = gml_driver.Open(self.gml)
-#        layer = gml_data.GetLayer()
-#        max_value = 0
-#        geom_wkt = None
-#        for feature in layer:
-#            value = feature.GetField("Value")
-#            if value>max_value:
-#                max_value = value
-#                geom_wkt = feature.GetGeometryRef().ExportToWkt()
-#        if geom_wkt!=None:
-#            transform = osr.CoordinateTransformation(self.srs,wgs84_cs)
-#            polygon = ogr.CreateGeometryFromWkt(geom_wkt)
-#            # use point instead of polygon
-#            point = polygon.PointOnSurface()
-#            lon,lat,dummy = transform.TransformPoint(point.GetX(),point.GetY())
-#        else:
-#            lon,lat = None, None
-#        return (max_value,(lon,lat))
+    def areaExceeding(self,value,time_value):
+        "calculate area where value is exceeded"
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(2) # view
+        if time_value!=None:
+            epoch_time = int(time_value.timestamp())
+            layer.SetAttributeFilter( "Time={:d}".format(epoch_time) )
+        layer.SetAttributeFilter( "Value > %f" % value )
+        area = 0
+        for feature in layer:
+            area += feature.GetGeometryRef().GetArea()
+        return area
+
