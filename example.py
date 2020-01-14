@@ -25,13 +25,9 @@ rodos = RodosConnection( settings )
 #projects = rodos.projects_old( )
 projects = rodos.projects
 
-print ( "Projects available:" )
-for p in projects:
-    print ( "* {}".format(p.name) )
 
 # Choose the latest project
 project = projects[-1]
-print ("Got project " + project.name)
 # load project metadata
 project.load()
 # get tasks
@@ -39,38 +35,41 @@ tasks = project.tasks
 # Emergency project has only 1 task
 task = tasks[0]
 
-# a few examples...
-
-# iterate over timestamps
 gamma_dose_rate  = task.total_gamma_dose_rate
-time_values = gamma_dose_rate.times()
-for timestamp in time_values:
-    m = gamma_dose_rate.max(timestamp)
-    if m[2]==None:
-        continue
-    max_value = m[0]
-    max_location = m[1]
-    print ( "Max gamma dose rate on {} is {} {} at point {}.".format(
-        timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'),
-        max_value,
-        gamma_dose_rate.unit,
-        str(max_location))
-    )
 
-# iterate over depositions
-for nuclide in task.deposition.keys():
-    grid = task.deposition[nuclide]
-    m = grid.max()
-    if m[2]==None:
-        continue
-    max_value = m[0]
-    max_location = m[1]
-    max_tstamp = m[2].strftime('%Y-%m-%dT%H:%M:%SZ')
-    print ( "Max deposition of {} is {} {} at point {} and time {}".format(
-        nuclide,
-        max_value,
-        grid.unit,
-        str(max_location),
-        max_tstamp)
-    )
+if __name__=="__main__":           
+    print ( "Projects available:" )
+    for p in projects:
+        print ( "* {}".format(p.name) )
+    print ("Got project " + project.name)
+    time_values = gamma_dose_rate.times()
+    for timestamp in time_values:
+        m = gamma_dose_rate.max(timestamp)
+        if m[2]==None:
+            continue
+        max_value = m[0]
+        gamma_max_location = m[1]
+        print ( "Max gamma dose rate on {} is {} {} at point {}.".format(
+            timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            max_value,
+            gamma_dose_rate.unit,
+            str(gamma_max_location))
+        )
+    # iterate over depositions
+    for nuclide in task.deposition.keys():
+        grid = task.deposition[nuclide]
+        m = grid.max()
+        if m[2]==None:
+            continue
+        max_value = m[0]
+        max_location = m[1]
+        max_tstamp = m[2].strftime('%Y-%m-%dT%H:%M:%SZ')
+        print ( "Max deposition of {} is {} {} at point {} and time {}".format(
+            nuclide,
+            max_value,
+            grid.unit,
+            str(max_location),
+            max_tstamp)
+        )
+
 

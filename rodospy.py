@@ -356,3 +356,41 @@ class GridSeries(object):
             area += feature.GetGeometryRef().GetArea()
         return area
 
+    def timeSeries(self,lon,lat):
+        "extract time series in singe point"
+        times = self.times
+        point = ogr.Geometry(ogr.wkbPoint)
+        point.AddPoint( lon,lat )
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(0) # grid
+        transform = osr.CoordinateTransformation(wgs84_cs,layer.GetSpatialRef())
+        point.Transform( transform )
+        found = False
+        for feature in layer:
+            data_geom = feature.GetGeometryRef()
+            if data_geom.Intersects( point ):
+                cell = float(feature.GetField("Cell"))
+                found = True
+                break
+        if not found:
+            return None
+        layer = gis_data.GetLayer(2) # view
+        layer.SetAttributeFilter( "cell={:d}".format(int(cell)) )
+        values = {}
+        for feature in layer:
+            value = feature.GetField("Value")
+            t_value = feature.GetField("Time")
+            values[t_value] = value
+        # sort by time
+        x = []
+        y = []
+        for key in sorted(values.keys()):
+            x.append(key)
+            y.append(values[key])
+        return {"times": list(map(datetime.fromtimestamp,x)), 
+                "values": y, 
+                "unit": self.unit, 
+                "title": "{} at point ({},{})".format(self.name,
+                                                      "{0:.3f}".format(lon),
+                                                      "{0:.3f}".format(lat))
+                }
