@@ -50,9 +50,10 @@ for timestamp in time_values:
         continue
     max_value = m[0]
     max_location = m[1]
-    print ( "Max gamma dose rate on {} is {} mSv/h at point {}.".format(
+    print ( "Max gamma dose rate on {} is {} {} at point {}.".format(
         timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'),
         max_value,
+        gamma_dose_rate.unit,
         str(max_location))
     )
 
@@ -65,9 +66,10 @@ for nuclide in task.deposition.keys():
     max_value = m[0]
     max_location = m[1]
     max_tstamp = m[2].strftime('%Y-%m-%dT%H:%M:%SZ')
-    print ( "Max deposition of {} is {} Bq/m2 at point {} and time {}".format(
+    print ( "Max deposition of {} is {} {} at point {} and time {}".format(
         nuclide,
         max_value,
+        grid.unit,
         str(max_location),
         max_tstamp)
     )
