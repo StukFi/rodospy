@@ -13,6 +13,7 @@ import zipfile
 from dateutil.parser import parse
 from xml.etree.ElementTree import XML, fromstring, tostring
 from pathlib import Path
+import numpy as n
 # standard logging
 import logging
 logger = logging.getLogger('rodospy')
@@ -39,6 +40,66 @@ wgs84_cs.ImportFromEPSG(4326)
 gml_driver = ogr.GetDriverByName('GML')
 gpkg_driver = ogr.GetDriverByName('GPKG')
 
+request_template = """<?xml version="1.0" encoding="UTF-8"?>
+        <wps:Execute version="1.0.0" service="WPS" 
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns="http://www.opengis.net/wps/1.0.0" 
+          xmlns:wfs="http://www.opengis.net/wfs"
+          xmlns:wps="http://www.opengis.net/wps/1.0.0" 
+          xmlns:ows="http://www.opengis.net/ows/1.1"
+          xmlns:gml="http://www.opengis.net/gml" 
+          xmlns:ogc="http://www.opengis.net/ogc"
+          xmlns:wcs="http://www.opengis.net/wcs/1.1.1" 
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+          xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 
+          http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
+          <ows:Identifier>gs:JRodosGeopkgWPS</ows:Identifier>
+          <wps:DataInputs>
+            <wps:Input>
+              <ows:Identifier>taskArg</ows:Identifier>
+              <wps:Data>
+                <wps:LiteralData>TASKARG</wps:LiteralData>
+              </wps:Data>
+            </wps:Input>
+            <wps:Input>
+              <ows:Identifier>dataitem</ows:Identifier>
+              <wps:Data>
+                <wps:LiteralData>DATAITEM</wps:LiteralData>
+              </wps:Data>
+            </wps:Input>
+            <wps:Input>
+              <ows:Identifier>columns</ows:Identifier>
+              <wps:Data>
+                <wps:LiteralData>COLUMNS</wps:LiteralData>
+              </wps:Data>
+            </wps:Input>
+            <wps:Input>
+              <ows:Identifier>vertical</ows:Identifier>
+              <wps:Data>
+                <wps:LiteralData>0</wps:LiteralData>
+              </wps:Data>
+            </wps:Input>
+            <wps:Input>
+              <ows:Identifier>threshold</ows:Identifier>
+              <wps:Data>
+                <wps:LiteralData>THRESHOLD</wps:LiteralData>
+              </wps:Data>
+            </wps:Input>
+            <wps:Input>
+              <ows:Identifier>includeSLD</ows:Identifier>
+              <wps:Data>
+                <wps:LiteralData>1</wps:LiteralData>
+              </wps:Data>
+            </wps:Input>     
+          </wps:DataInputs>
+          <wps:ResponseForm>
+            <wps:RawDataOutput mimeType="application/zip">
+              <ows:Identifier>result</ows:Identifier>
+            </wps:RawDataOutput>
+          </wps:ResponseForm>
+        </wps:Execute>
+"""
+
 def datetime_parser(value):
     "datetime parser for json document"
     if isinstance(value, dict):
@@ -63,7 +124,8 @@ def from_rodos_nuclide(nuclide):
 
 class RodosPyException(Exception):
     "Module specific exception"
-    pass
+    def __init(self,message):
+        raise NameError ( message )
 
 class RodosConnection(object):
     """
@@ -109,6 +171,15 @@ class RodosConnection(object):
         for p in proj_dict:
             projects.append(Project(self,p))
         return projects
+
+    def get_npps(self):
+        """
+        Get listing of Nuclear Power plants
+        """
+        response = urlopen( self.rest_url + "/npps" )
+        npp_dict = json.load(reader(response),
+                             object_hook=datetime_parser)["content"]
+        return npp_dict
 
 class Project(object):
     """
@@ -220,7 +291,11 @@ class Task(object):
             elif i.groupname=="skin.dose":
                 self.skin_dose[i.name] = i
             elif i.groupname=="total.dose.nuclide.specific":
-                self.total_dose[i.name] = i
+                try:
+                    key = from_rodos_nuclide(i.name)
+                except IndexError: # not nuclide 
+                    key = i.name
+                self.total_dose[key] = i
 
 class GridSeries(object):
     "Series of grid results"
@@ -282,7 +357,7 @@ class GridSeries(object):
                 ('includeSLD', "1"),
                 ('threshold', "1e-15") # TODO: add threshold support
             ]
-        x = open("request_template.xml").read()
+        x = "{}".format(request_template)
         x = x.replace("TASKARG",wps_input[0][1])
         x = x.replace("DATAITEM",wps_input[1][1])
         x = x.replace("COLUMNS",wps_input[2][1])
@@ -299,8 +374,13 @@ class GridSeries(object):
             resp_file.write( response.read() )
             resp_file.close()
             Path(output_dir).mkdir(parents=True, exist_ok=True)
-            with zipfile.ZipFile(temp.name, 'r') as zip_ref:
-                zip_ref.extractall(output_dir)
+            try:
+                with zipfile.ZipFile(temp.name, 'r') as zip_ref:
+                    zip_ref.extractall(output_dir)
+            except zipfile.BadZipFile:
+                logger.error ( "Something went wrong" )
+                os.rmdir ( output_dir )
+                raise RodosPyException ( open(temp.name).read()  )
         finally:
             temp.close() 
         self.filepath = output_dir
@@ -394,3 +474,50 @@ class GridSeries(object):
                                                       "{0:.3f}".format(lon),
                                                       "{0:.3f}".format(lat))
                 }
+
+    def getBbox(self):
+        "Get bounding box of data"
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(0) # grid
+        e = layer.GetExtent()
+        return (e[0],e[2],e[1],e[3])
+    
+    def getCentroid(self):
+        "Get data bounding box centroid"
+        bbox = self.getBbox()
+        ring = ogr.Geometry(ogr.wkbLinearRing)
+        ring.AddPoint( bbox[0], bbox[1] ) 
+        ring.AddPoint( bbox[0], bbox[3] )
+        ring.AddPoint( bbox[2], bbox[3] )
+        ring.AddPoint( bbox[2], bbox[1] )
+        ring.AddPoint( bbox[0], bbox[1] ) 
+        polygon = ogr.Geometry( ogr.wkbPolygon )
+        polygon.addGeometry (ring )
+        return polygon.Centroid()
+
+    def maxAtDistance(self,center_lon,center_lat,distance_in_km):
+        "get maximum value in the distance of X meters. Center must be given also."
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(2) # view
+        point = ogr.Geometry(ogr.wkbPoint)
+        point.AddPoint( center_lon,center_lat )
+        transform = osr.CoordinateTransformation(wgs84_cs,layer.GetSpatialRef())
+        point.Transform( transform) 
+        x = point.GetX()
+        y = point.GetY()
+        ring = ogr.Geometry(ogr.wkbLineString)
+        for i in range(0,720): # circle line forms of 720 points
+            x_coord = x + ( n.cos (n.radians(i/2.0) ) * distance_in_km/2.0 * 1000 *2 )
+            y_coord = y + ( n.sin (n.radians(i/2.0) ) * distance_in_km/2.0 * 1000 *2 )
+            ring.AddPoint( x_coord, y_coord )
+        values = []
+        for feature in layer:
+            data_geom = feature.GetGeometryRef()
+            if data_geom.Intersects ( ring ):
+                values.append( feature.GetField("Value") )
+        if values==[]:
+            return None
+        else:
+            return max(values)
+
+
