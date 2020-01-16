@@ -4,13 +4,38 @@ import matplotlib.pyplot as plt
 from matplotlib import dates
 import numpy as np
 
+# search for max value of gamma dose rate
+gamma_max = gamma_dose_rate.max()
+lon = gamma_max[1][0]
+lat = gamma_max[1][1]
+time_max = gamma_max[2]
+
+# Plot map
+shapefile_path = gamma_dose_rate.save_as_shapefile( 
+    "/tmp","out",time_max)
+
+print ( "joo" )
+from mpl_toolkits.basemap import Basemap
+
+map = Basemap(llcrnrlon=20,llcrnrlat=60,urcrnrlon=22,urcrnrlat=62.,
+             resolution='i', projection='tmerc', lat_0 = 61, lon_0 = 21)
+
+map.drawmapboundary(fill_color='aqua')
+map.fillcontinents(color='#ddaa66',lake_color='aqua')
+map.drawcoastlines()
+
+s = shapefile_path.split(".")
+print ( ".".join(s[:-1] ))
+
+map.readshapefile(".".join(s[:-1]), 
+                  os.path.basename(shapefile_path).split(".")[0] )
+
+plt.show()
+
+
 hfmt = dates.DateFormatter("%m/%d %H:%M")
 
 # plot single dataset timestep
-# search for max value of gamma dose rate
-gamma_max_location = gamma_dose_rate.max()[1]
-lon = gamma_max_location[0]
-lat = gamma_max_location[1]
 data = gamma_dose_rate.timeSeries(lon,lat)
 fig = plt.figure()
 ax =  fig.add_subplot (111)

@@ -38,10 +38,14 @@ project = projects[-1]
 project.load()
 # get tasks
 tasks = project.tasks
-# Emergency project has only 1 task
-task = tasks[0]
 
-gamma_dose_rate  = task.total_gamma_dose_rate
+# Find LSMC task
+for t in tasks:
+    if t.modelwrappername=="LSMC":
+        task = t
+        break
+
+gamma_dose_rate = task.total_gamma_dose_rate
 
 if __name__=="__main__":
-    print ( "This module only loads data. Try other examples.")
+    print ( "Sample data loaded.")

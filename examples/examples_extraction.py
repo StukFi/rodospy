@@ -18,7 +18,7 @@ for npp in rodos.get_npps():
 rows = [
     ["distance","dose_type","nuclide_or_type","value_mSv"]
 ]
-for distance in range (5, 101, 5):
+for distance in (0.5,1,1.5,2,3,4,5,10,15,20,30,40,50):
     for key in task.cloud_dose.keys():
         rows.append([
             distance,

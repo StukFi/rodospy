@@ -39,6 +39,7 @@ wgs84_cs = osr.SpatialReference()
 wgs84_cs.ImportFromEPSG(4326)
 gml_driver = ogr.GetDriverByName('GML')
 gpkg_driver = ogr.GetDriverByName('GPKG')
+shapefile_driver = ogr.GetDriverByName('ESRI Shapefile')
 
 request_template = """<?xml version="1.0" encoding="UTF-8"?>
         <wps:Execute version="1.0.0" service="WPS" 
@@ -340,8 +341,20 @@ class GridSeries(object):
     
     def gpkg_file(self):
         "get full path of gpkg file"
-        return self.get_filepath() + "/" + os.listdir( self.get_filepath() )[0]
+        filelist = os.listdir( self.get_filepath() ) 
+        for filename in filelist:
+            if filename.split(".")[-1]=="gpkg":
+                break
+        return self.get_filepath() + "/" + filename
 
+    def sld_file(self):
+        "get full path of sld file"
+        filelist = os.listdir( self.get_filepath() ) 
+        for filename in filelist:
+            if filename.split(".")[-1]=="sld":
+                break
+        return self.get_filepath() + "/" + filename
+    
     def save_gpkg(self,output_dir=None,force=True):
         "Read and save GeoPackage file from WPS service"
         if output_dir==None:
@@ -349,7 +362,7 @@ class GridSeries(object):
         wps_input = [
                 ('taskArg', 
                  "project='{}'&amp;model='{}'".format(self.task.project.name,\
-                                                      self.task.project.modelchainname)),
+                                                      self.task.modelwrappername)),
                 ('dataitem',
                  "path='%s'" % self.datapath),
                 ('columns', "0-"), # get the whole dataset
@@ -519,5 +532,48 @@ class GridSeries(object):
             return None
         else:
             return max(values)
+
+    def save_as_shapefile(self,output_dir=None, file_prefix="out", timestamp=None):
+        "Save as shape file. Can be used in map plotting etc"
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(2) # view
+        if timestamp!=None:
+            epoch_time = int(timestamp.timestamp())
+            layer.SetAttributeFilter( "Time={:d}".format(epoch_time) )
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        shapefile_path = "{}/{}.shp".format(
+            output_dir,file_prefix)
+        data_source = shapefile_driver.CreateDataSource( shapefile_path)
+        srs = layer.GetSpatialRef()
+        shapefile_layer = data_source.CreateLayer( "jrodosexport",wgs84_cs,ogr.wkbPolygon)
+        fields = ( 
+            ("fid", ogr.OFTInteger64),
+            ("Cell", ogr.OFTInteger64),
+            ("Time", ogr.OFTInteger64),
+            ("Value", ogr.OFTReal)
+        )
+
+        for f in fields:
+            field_def = ogr.FieldDefn(f[0],f[1])
+            shapefile_layer.CreateField(field_def)
+
+        transform = osr.CoordinateTransformation(layer.GetSpatialRef(),wgs84_cs)
+        for feature in layer:
+            geom = feature.GetGeometryRef()
+            geom.Transform ( transform )
+            feature.SetGeometry ( geom )
+            shapefile_layer.CreateFeature( feature )
+        data_source = None
+        # reproject geometry
+        for feature in shapefile_layer:
+            geom = feature.GetGeometryRef()
+            geom.Transform ( transform )
+        return shapefile_path
+
+
+
+
+
+
 
 
