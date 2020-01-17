@@ -494,6 +494,20 @@ class GridSeries(object):
         layer = gis_data.GetLayer(0) # grid
         e = layer.GetExtent()
         return (e[0],e[2],e[1],e[3])
+
+    def getLonLatBoundaries(self):
+        "get data boundaries"
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(0) # grid
+        e = layer.GetExtent()
+        transform = osr.CoordinateTransformation(layer.GetSpatialRef(),wgs84_cs)
+        ll = ogr.Geometry(ogr.wkbPoint)
+        ll.AddPoint( e[0],e[2] )
+        ur = ogr.Geometry(ogr.wkbPoint)
+        ur.AddPoint ( e[1], e[3] )
+        ll.Transform( transform )
+        ur.Transform( transform )
+        return (ll.GetX(),ll.GetY(),ur.GetX(),ur.GetY())
     
     def getCentroid(self):
         "Get data bounding box centroid"
@@ -561,13 +575,8 @@ class GridSeries(object):
         for feature in layer:
             geom = feature.GetGeometryRef()
             geom.Transform ( transform )
-            feature.SetGeometry ( geom )
             shapefile_layer.CreateFeature( feature )
         data_source = None
-        # reproject geometry
-        for feature in shapefile_layer:
-            geom = feature.GetGeometryRef()
-            geom.Transform ( transform )
         return shapefile_path
 
 

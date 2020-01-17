@@ -18,6 +18,7 @@ try:
 except ImportError: 
     import sys, os.path
     sys.path.append(os.path.abspath('../'))
+    sys.path.append(os.path.abspath('.'))
     from rodospy import *
 
 # set debug level logging
