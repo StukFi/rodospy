@@ -1,5 +1,5 @@
-RodosPy 
--------
+JRodos Python module rodospy
+----------------------------
 Python module for reading GIS data and metadata from JRodos REST service and GeoServer WPS.
 
 Author: Tuomas Peltonen <tuomas.peltonen@stuk.fi>
@@ -10,7 +10,13 @@ Author: Tuomas Peltonen <tuomas.peltonen@stuk.fi>
 * GDAL https://pypi.python.org/pypi/GDAL/
 * python-dateutil
 
+Optionally matplotlib and matplotlib basemap that are used in plotting examples.
+
 ### Usage
 * Install dependencies
-* See example.py and change settings at settings dictionary. Run example.py
+* See example.py and change settings at settings dictionary. Run examples.
+
+### TODO
+* Nice packaging, setup script etc.
+* Compatibility with all relevant JRODOS models
 

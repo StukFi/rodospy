@@ -158,10 +158,14 @@ class RodosConnection(object):
         "get refreshed list of projects"
         self.projects = self.get_projects()
 
-    def get_projects(self): # fetch the project list
+    def get_projects(self,
+                     filters={}): # fetch the project list
         """
-        Get listing of projects. 
-        project_uid as parameter if only one project information wanted."
+        Get listing of projects.
+        Filters is a dictionary of project parameters.
+        Possible dict values are: projectId, uid, name,
+        description, username, modelchainname, extendedProjectInfo, 
+        dateTimeCreated, dateTimeModified
         """
         # rest request
         response = urlopen( self.rest_url + "/projects" )
@@ -170,7 +174,14 @@ class RodosConnection(object):
         # create list of project classes
         projects = []
         for p in proj_dict:
-            projects.append(Project(self,p))
+            add_project = True
+            for filter_key in filters.keys():
+                par_value = p[filter_key]
+                filter_value = filters[filter_key]
+                if filter_value!=par_value:
+                    add_project = False
+            if add_project:
+                projects.append(Project(self,p))
         return projects
 
     def get_npps(self):

@@ -33,8 +33,9 @@ rodos = RodosConnection( settings )
 projects = rodos.projects
 
 
-# Choose the latest project
-project = projects[-1]
+# Choose the latest project where model chain is "LSMC+EMERSIM+DEPOM+FDMT"
+project = rodos.get_projects(filters={"modelchainname":
+                                      "LSMC+EMERSIM+DEPOM+FDMT"})[-1]
 # load project metadata
 project.load()
 # get tasks
