@@ -36,16 +36,9 @@ projects = rodos.projects
 # Choose the latest project where model chain is "LSMC+EMERSIM+DEPOM+FDMT"
 project = rodos.get_projects(filters={"modelchainname":
                                       "LSMC+EMERSIM+DEPOM+FDMT"})[-1]
-# load project metadata
-project.load()
-# get tasks
-tasks = project.tasks
 
-# Find LSMC task
-for t in tasks:
-    if t.modelwrappername=="LSMC":
-        task = t
-        break
+# Get LSMC task
+task = project.get_tasks({"modelwrappername":"LSMC"})[0]
 
 gamma_dose_rate = task.total_gamma_dose_rate
 

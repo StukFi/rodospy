@@ -174,13 +174,7 @@ class RodosConnection(object):
         # create list of project classes
         projects = []
         for p in proj_dict:
-            add_project = True
-            for filter_key in filters.keys():
-                par_value = p[filter_key]
-                filter_value = filters[filter_key]
-                if filter_value!=par_value:
-                    add_project = False
-            if add_project:
+            if filters.items()<=p.items():
                 projects.append(Project(self,p))
         return projects
 
@@ -210,6 +204,8 @@ class Project(object):
         self.rodos = rodos
         for key in values:
             setattr(self,key,values[key])
+        # load details only when necessary
+        self.details_dict = None
 
     def load(self):
         """Load project metadata"""
@@ -218,6 +214,7 @@ class Project(object):
             self.projectId))
         details_dict = json.load(reader(response),
                                  object_hook=datetime_parser)
+        self.details_dict = details_dict
         # set metadata as attributes
         for key in details_dict:
             if (key not in ("tasks","extendedProjectInfo")):
@@ -229,6 +226,17 @@ class Project(object):
         self.sourcetermNuclides = self.sourcetermNuclides.split(",")
         for t in details_dict["tasks"]:
             self.tasks.append ( Task(self,t) )
+
+    def get_tasks(self, filters={}):
+        "Get tasks and filter by dictionary."
+        if self.details_dict==None:
+            self.load()
+        tasks = []
+        for t in self.details_dict["tasks"]:
+            if filters.items()<=t.items():
+                tasks.append ( Task(self,t) )
+        return tasks
+        
 
 class Task(object):
     """
