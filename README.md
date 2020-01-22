@@ -7,6 +7,7 @@ Author: Tuomas Peltonen <tuomas.peltonen@stuk.fi>
 ### Dependencies
 * Python (3.X only! )
 * OWSLib https://geopython.github.io/OWSLib/
+* Numpy https://numpy.org
 * GDAL https://pypi.python.org/pypi/GDAL/
 * python-dateutil
 
