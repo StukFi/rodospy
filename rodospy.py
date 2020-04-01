@@ -282,7 +282,7 @@ class Task(object):
             elif i.groupname=="ground.contamination.wet":
                 self.wet_deposition[i.nuclide] = i
             elif i.groupname=="ground.contamination.dry":
-                self.wet_deposition[i.nuclide] = i
+                self.dry_deposition[i.nuclide] = i
             elif i.groupname=="air.concentration.near.ground.surface":
                 self.air_concentration[i.nuclide] = i
             elif i.groupname==\
