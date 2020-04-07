@@ -1,0 +1,21 @@
+{% extends 'layout.jinja2' %}
+
+{% block subtitle %}Scenario's - {% endblock subtitle %}
+
+{% block content %}
+
+    <h2>JRodos</h2>
+
+    <p>
+    <a href="{{request.route_url('projects')}}">Create a new scenario based on a JRodos project</a>
+    </p>
+
+    <h2>Latest Scenario's</h2>
+
+    {% for scenario in scenarios %}
+        <p>
+            <a href="scenario/{{ scenario.id|safe }}">{{ scenario.id|safe }}</a> - {{ scenario.name|safe }} created by <strong>{{scenario.creator.name}}</strong>
+        </p>
+    {% endfor %}
+
+{% endblock content %}

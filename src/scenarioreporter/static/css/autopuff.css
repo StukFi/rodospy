@@ -1,0 +1,19 @@
+
+body, html {
+  height:100%;
+}
+
+.object_info {
+  font-size:smaller;
+  list-style:none;
+  line-height:80%;
+}
+
+.atitle {
+  color: black;
+  text-decoration: none;
+}
+
+li {
+    margin-bottom: 0.5rem;
+}

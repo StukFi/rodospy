@@ -1,0 +1,91 @@
+{% extends 'layout.jinja2' %}
+
+{% block subtitle %}Scenario's - {% endblock subtitle %}
+
+{% block content %}
+
+<!-- CSS
+–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<!--<link rel="stylesheet" href="{{request.static_url('scenarioreporter:static/css/normalize.css')}}">
+<link rel="stylesheet" href="{{request.static_url('scenarioreporter:static/css/skeleton.css')}}">
+<link rel="stylesheet" href="{{request.static_url('scenarioreporter:static/css/autopuff.css')}}">-->
+<!-- https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css -->
+<link rel="stylesheet" href="{{request.static_url('scenarioreporter:static/css/leaflet.css')}}" />
+<!-- https://cdn.rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css -->
+<link rel="stylesheet" href="{{request.static_url('scenarioreporter:static/css/leaflet.timedimension.control.min.css')}}" />
+<link rel="stylesheet" href="{{request.static_url('scenarioreporter:static/css/leaflet.wmslegend.css')}}"/>
+<link rel="stylesheet" href="{{request.static_url('scenarioreporter:static/css/L.Control.MousePosition.css')}}"/>
+
+<!-- Javascript
+–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/polyfill.js')}}"></script>
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/moment.js')}}"></script>
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/moment-timezone.js')}}"></script>
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/moment-timezone-with-data.js')}}"></script>
+<!-- https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.4.0/leaflet.js -->
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/leaflet.js')}}"></script>
+
+<!-- https://github.com/ptv-logistics/Leaflet.NonTiledLayer
+https://unpkg.com/leaflet.nontiledlayer@1.0.7/dist/   -->
+<!--<script type="text/javascript" src="lib/NonTiledLayer-src.js"></script>-->
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/NonTiledLayer.js')}}"></script>
+
+<!-- https://cdn.rawgit.com/nezasa/iso8601-js-period/master/iso8601.min.js -->
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/iso8601.min.js')}}"></script>
+<!-- https://cdn.rawgit.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.min.js -->
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/leaflet.timedimension.min.js')}}"></script>
+<!-- https://code.jquery.com/jquery-3.3.1.min.js -->
+<script type="text/javascript" src="{{request.static_url('scenarioreporter:static/lib/jquery-3.3.1.min.js')}}"></script>
+<!-- https://github.com/kartoza/leaflet-wms-legend -->
+<script src="{{request.static_url('scenarioreporter:static/lib/leaflet.wmslegend.js')}}"></script>
+<!-- https://github.com/ardhi/Leaflet.MousePosition -->
+<script src="{{request.static_url('scenarioreporter:static/lib/L.Control.MousePosition.js')}}"></script>
+
+
+<script src="{{request.static_url('scenarioreporter:static/rodosweb.js')}}"></script>
+
+
+<h2>Scenario:</h2>
+<p>
+    <a href="{{request.route_url('scenario', id=scenario.id)}}">{{ scenario.id|safe }}</a> - {{ scenario.name|safe }}, created by '{{scenario.creator.name}}'</strong>'.
+</p>
+<p>
+   {{ scenario.data|safe }}
+</p>
+
+<h2>Items:</h2>
+
+<hr/>
+
+{% for item in items %}
+
+        {% if item.data[0] == '{' %}
+            {% include "map.jinja2" %}
+        {% else %}
+            {{ item.data|safe }}
+        {% endif %}
+
+    <p>
+        <a href="{{request.route_url('item_edit', id=item.id|safe) }}">Edit</a>
+        -
+        <a href="{{request.route_url('item_up', id=item.id|safe) }}">Move UP</a>
+        -
+        <a href="{{request.route_url('item_down', id=item.id|safe) }}">Move DOWN</a>
+        -
+        <a href="{{request.route_url('item_new', id=item.id|safe) }}">INSERT new item</a>
+        {# ONLY if this is NOT the last item #}
+        {% if item.next >= 0 or item.previous >= 0 %}
+            -
+            <a href="{{ request.route_url('item_delete', id=item.id|safe) }}">DELETE this item</a>
+        {% endif %}
+    </p>
+
+    <hr/>
+
+{% endfor %}
+
+<p>You can return to the
+    <a href="{{request.route_url('scenarios', pagename='xxx Scenario List')}}">Scenario list</a>.
+</p>
+
+{% endblock content %}

@@ -1,0 +1,14 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+  <h1><span class="font-semi-bold">Bummer</span> <span class="smaller">an 404 error occured with your url.</span></h1>
+
+  <p class="lead">Message: {{ context.message }}</p>
+
+  <p>You can return to the
+    <a href="{{request.route_url('scenarios', pagename='Scenario List')}}">Scenario list</a>.
+  </p>
+
+</div>
+{% endblock content %}

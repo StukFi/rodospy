@@ -1,0 +1,26 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+  <h1>Current JRodos Projects:</h1>
+  <p>Select the project you want to create an initial scenario report for</p>
+<!--
+        dateTimeCreated
+        dateTimeModified
+        description
+        links
+        modelchainname
+        name
+        projectid
+        uid
+        username
+-->
+    <ul id="navigation">
+    {% for project in projects %}
+        <li>{{ project.projectId }} - <a href="project?project_url={{ project.links[0].href }}">{{ project.name }}</a> - {{ project.username }} - {{ project.modelchainname }} - <small>{{ project.dateTimeCreated.strftime('%H:%M %Y-%m-%d') }}</small></li>
+    {% endfor %}
+    </ul>
+
+
+</div>
+{% endblock content %}

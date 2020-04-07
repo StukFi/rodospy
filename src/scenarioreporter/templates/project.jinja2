@@ -1,0 +1,85 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<p><a href="/projects">List JRodos Projects</a></p>
+
+{#
+    {{ request.environ }}
+#}
+
+<div class="content">
+
+  <h1>Start new Scenario Report</h1>
+  <p>Start a new Scenario Report by clicking a  [ Start Scenario Report ] button of one of the available endpoints</p>
+
+  <h2>JRodos Project information: {{ project.name}}</h2>
+    <ul>
+        <li>name: {{ project.name }}</li>
+        <li>projectId: {{ project.projectId }}</li>
+        <li>username: {{ project.username }}</li>
+        <li>description: {{ project.description }}</li>
+        <li>timestepOfPrognosis: {{ project.timestepOfPrognosis }}</li>
+        <li>timestepOfPronosisUnit: {{ project.timestepOfPronosisUnit }}</li>
+        <li>durationOfPrognosis: {{ project.durationOfPrognosis }}</li>
+        <li>durationOfPronosisUnit: {{ project.durationOfPronosisUnit }}</li>
+        <li>modelchainname: {{ project.modelchainname }}</li>
+        <li>rodos: {{ project.rodos }}</li>
+        <li>sourcetermNuclides: {{ project.sourcetermNuclides }}</li>
+        <li>startOfPrognosis: {{ project.startOfPrognosis }}</li>
+        <li>startOfRelease: {{ project.startOfRelease }}</li>
+        <li>systemOperationMode: {{ project.systemOperationMode }}</li>
+        <li>tasks: {{ project.tasks }}</li>
+        <li>uid: {{ project.uid }}</li>
+        <li>weatherProvider: {{ project.weatherProvider }}</li>
+        <li>links: {{ project.links[0]['href'] }}</li>
+        <li>dateTimeCreated: {{ project.dateTimeCreated }}</li>
+        <li>dateTimeModified: {{ project.dateTimeModified }}</li>
+    </ul>
+
+    <h2>Models:</h2>
+    <ul>
+    {#
+        {
+            'dataitem_id': 8,
+            'dataitem_type': 'Complex',
+            'groupname': None,
+            'name': 'Output',
+            'description': '',
+            'substance': '',
+            'datapath': 'Model data=;=Output',
+            'reporttable': None,
+            'showunit': False,
+            'showparents': 0,
+            'parent_dataitem_id': 1,
+            'grid_id': 0,
+            'dataitem_index': 0,
+            'unit': ''
+        }
+     #}
+    # {'name':task.modelwrappername, 'description':task.description, 'dataitemnodes':dataitemnodes}
+     {% for task in tasks_dataitems %}
+        {% for pre, dataitem in task['dataitemnodes'] %}
+            <span class="dataitem_{{ dataitem['dataitem_type'] }}">
+                {% if dataitem %}
+                    {% if dataitem['description'] %}
+                        {{ task['name'] }} - {{ task['description'] }} -- {{ dataitem['description'] }}
+                    {% else %}
+                        {{ pre }}  {#  'pre' generates the 'three' lines #}
+                        <a href="javascript:alert(
+                        'name: {{dataitem['name']}}\r\ndescription: {{dataitem['description']}}\r\ndataitem_id: {{dataitem['dataitem_id']}}\r\ndataitem_type: {{dataitem['dataitem_type']}}\r\ngroupname: {{dataitem['groupname']}}\r\nsubstance: {{dataitem['substance']}}\r\nreporttable: {{dataitem['reporttable']}}\r\nshowunit: {{dataitem['showunit']}}\r\nshowparents: {{dataitem['showparents']}}\r\nparent_dataitem_id: {{dataitem['parent_dataitem_id']}}\r\ngrid_id: {{dataitem['grid_id']}}\r\ndataitem_index: {{dataitem['dataitem_index']}}\r\nunit: {{dataitem['unit']}}\r\ndatapath:\r\n  {{dataitem['datapath']}}'
+                        )">{{ dataitem['name'] }}</a>
+                    {% endif %}
+                {% endif %}
+                {% if dataitem['dataitem_type']=='GridSeries' %}
+                    <!-- - - [ <a href="javascript:alert( '{{ dataitem['datapath']|urlencode }}' )">Download GRID</a> ] -->
+                    - -
+                    - [ <a href="scenario/new?project_url={{ project.links[0]['href']|urlencode }}&datapath={{ dataitem['datapath']|urlencode }}&task={{ task['name'] }}">Start Scenario Report</a> ]
+                    - [ <a href="grid_save?project_url={{ project.links[0]['href']|urlencode }}&datapath={{ dataitem['datapath']|urlencode }}&task={{ task['name'] }}">Download GRID</a> ]
+                {% endif %}
+            </span><br/>
+        {% endfor %} {#  for pre, dataitem in task #}
+    {% endfor %} {# for dataitemsastree in tasks_dataitems  #}
+
+    </ul>
+</div>
+{% endblock content %}

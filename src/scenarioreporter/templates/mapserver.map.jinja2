@@ -1,0 +1,99 @@
+MAP
+    NAME "{{ mapname }}"
+    STATUS ON
+    SIZE 600 400
+    EXTENT -180 -90 180 90  # TODO ??
+    UNITS DD
+    SHAPEPATH "."
+    IMAGECOLOR 255 255 255
+
+    #
+    # Start of web interface definition
+    #
+    WEB
+        IMAGEPATH "/tmp/ms_tmp/"
+        IMAGEURL "/ms_tmp/"
+    TEMPPATH "/tmp"
+        METADATA
+          "wms_title"           "Mapserver DateTime test"  # TODO ?
+          #"wms_onlineresource"  "http://localhost/cgi-bin/mapserv?map=....."  # <= only set this one if you need it!!
+          "wms_srs"             "EPSG:4326 EPSG:3857 EPSG:28992"
+          "wms_enable_request"  "*"
+          "wms_feature_info_mime_type" "geojson"
+          "wms_include_items"   "all"
+          "wms_style_name"      "view"
+          "gml_include_items"   "all"
+          "gml_types"           "auto"
+          "gml_featureid"       "id"
+          "wfs_enable_request"  "*"
+          "wfs_getfeature_formatlist" "OGRGML,SHAPEZIP,CSV,geojson"
+        END
+    END # WEB
+
+    # https://lists.osgeo.org/pipermail/mapserver-users/2013-November/075559.html
+    # define an outputformat for getfeatureinfo output
+    # either geojson or json...
+    # json example has some extra options
+    OUTPUTFORMAT
+      NAME "geojson"
+      DRIVER "OGR/GEOJSON"
+      MIMETYPE "application/json; subtype=geojson"
+      FORMATOPTION "STORAGE=stream"
+      #FORMATOPTION "FORM=SIMPLE"
+    END
+
+    OUTPUTFORMAT
+        NAME "JSON"
+        DRIVER "OGR/GEOJSON"
+        EXTENSION "json"
+        #FORMATOPTION "FORM=SIMPLE"
+        FORMATOPTION "LCO:COORDINATE_PRECISION=8"
+        FORMATOPTION "LCO:DESCRIPTION=This should be GeoJSON 2008; the projection may not be in CRS:84, but if not, there should be a crs: member telling you what projection has been used"
+        FORMATOPTION "LCO:NATIVE_DATA=YES"
+        FORMATOPTION "LCO:WRITE_BBOX=YES"
+        FORMATOPTION "STORAGE=stream"
+        MIMETYPE "application/json; subtype=geojson"
+    END
+
+    PROJECTION
+      "init=epsg:4326"
+    END
+
+    #
+    # Start of layer definitions
+    #
+    # https://mapserver.org/input/vector/sqlite.html
+    #
+    LAYER
+        NAME {{ layername }}
+        METADATA
+          "wms_title"      "time_values"  # <== same: only set this if you want it different from NAME
+          "wms_timeextent" "{{ prognosis_start }}/{{ prognosis_end }}" # "2019-09-01T06:00:00.000Z/2019-09-02T06:00:00.000Z"  # <== without this one NO time dimension in capabilities
+          "wms_timeitem"   "isotime"
+          # "wms_timedefault" "{{ prognosis_end }}"  # DEFAULTING to latest cloud  BUT !!! BUT !!! if you enable this you will ONLY get THAT ONE feature back in the getfeatureinfo-response !!!
+          "wms_enable_request" "*"
+          "wms_include_items" "all"
+          "gml_include_items" "all"   # <== IMPORTANT!! without you will have no attributes/properties in your geojson
+        END
+        DUMP TRUE
+        TYPE POLYGON
+        CONNECTIONTYPE OGR
+        CONNECTION  "{{ gpkgname }}" # "Total_gamma_dose_rate.gpkg"
+        DATA "select *, strftime('%Y-%m-%dT%H:%M:%S.000Z', Time, 'unixepoch') as isotime from View"  # WORKING !!! NOTE you need wms_timeitem" "isotime" in METADATA
+        HEADER ""
+        TEMPLATE "blank.html"
+        FOOTER ""
+        STATUS ON
+        DEBUG ON
+
+        CLASS
+         NAME "red"
+         STYLE
+           OUTLINECOLOR 0 0 0
+           WIDTH 1
+           COLOR 255 0 0
+         END
+        END
+
+    END # LAYER
+END # MAP
