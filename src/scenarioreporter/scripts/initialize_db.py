@@ -34,6 +34,7 @@ def setup_models(dbsession):
     if not scenario1:
         scenario1 = models.Scenario(
             id=1,
+            project='http://jrodos.dev.cal-net.nl/rest-2.0/jrodos/projects/3149',
             name='Scenario-1',
             data='This is Scenario 1',
             creator=editor,
@@ -92,27 +93,27 @@ def setup_models(dbsession):
         dbsession.add(item4)
 
 
-    scenario2 = dbsession.query(models.Scenario).filter_by(id=2).first()
-    if not scenario2:
-        scenario2 = models.Scenario(
-            id=2,
-            name='Scenario-2',
-            data='This is Scenario 2',
-            creator=editor,
-        )
-        dbsession.add(scenario2)
-
-    item5 = dbsession.query(models.Item).filter_by(id=5).first()
-    if not item5:
-        item5 = models.Item(
-            name="First Item of 2",
-            scenario_id=2,
-            data="First Item of 2",
-            next=-1,
-            previous=-1,
-            creator=editor,
-        )
-        dbsession.add(item5)
+    # scenario2 = dbsession.query(models.Scenario).filter_by(id=2).first()
+    # if not scenario2:
+    #     scenario2 = models.Scenario(
+    #         id=2,
+    #         name='Scenario-2',
+    #         data='This is Scenario 2',
+    #         creator=editor,
+    #     )
+    #     dbsession.add(scenario2)
+    #
+    # item5 = dbsession.query(models.Item).filter_by(id=5).first()
+    # if not item5:
+    #     item5 = models.Item(
+    #         name="First Item of 2",
+    #         scenario_id=2,
+    #         data="First Item of 2",
+    #         next=-1,
+    #         previous=-1,
+    #         creator=editor,
+    #     )
+    #     dbsession.add(item5)
 
 def parse_args(argv):
     parser = argparse.ArgumentParser()

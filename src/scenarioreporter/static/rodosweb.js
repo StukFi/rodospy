@@ -1,5 +1,5 @@
 // Shorthand for $( document ).ready()
-$(function() {
+function create_map_here(mapprops) {
 
     var MAP_DIV = 'map_'+mapprops.div;
     var MAP_FILE = mapprops.map_file;
@@ -190,4 +190,4 @@ $(function() {
       return url;
     }
 
-}) // END $( document ).ready()
+}

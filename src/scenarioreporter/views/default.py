@@ -116,6 +116,7 @@ def scenario_new(request):
     map_item.previous = text_item.id
     text_item.next = map_item.id
 
+    # go to the just created scenario
     scenario_url = request.route_url('scenario', id=scenario.id)
     return HTTPFound(location=scenario_url)
 
@@ -123,6 +124,7 @@ def create_scenario(request, editor, project):
     this_scenario = models.Scenario(
         name='name',
         data='data',
+        project=project.links[0]['href'],
         creator=editor,
     )
     request.dbsession.add(this_scenario)
@@ -220,7 +222,7 @@ def create_map_item(request, editor, scenario, project, datapath, task_name):
 
                 # adding MAP item
                 map_item = models.Item(
-                    name='map',
+                    name=datapath.replace('Model data=;=Output=;=Prognostic Results=;=', '').replace('=;=', ' '),
                     scenario_id=scenario.id,
                     data='',
                     next=-1,
@@ -318,30 +320,62 @@ def item_up(request):
     scenario_url = request.route_url('scenario', id=scenario.id)
     return HTTPFound(location=scenario_url)
 
+@view_config(route_name='item_map', renderer='../templates/scenario.jinja2')
+def item_map(request):
+    # http://localhost:6543/item/new_map/after/<id>
+    after_id = request.matchdict['id']
+    previous_item = request.dbsession.query(models.Item).filter_by(id=after_id).first()
+    scenario = request.dbsession.query(models.Scenario).filter_by(id=previous_item.scenario_id).first()
+    # send to project so user can choose form which endpoint he/she wants to add a map
+    project_url = request.route_url('project_map', id=after_id, _query={'project_url': scenario.project})
+    return HTTPFound(location=project_url)
+
+
 @view_config(route_name='item_new', renderer='../templates/scenario.jinja2')
 def item_new(request):
     # http://localhost:6543/item/new/after/<id>
-    item_id = request.matchdict['id']
-    previous_item = request.dbsession.query(models.Item).filter_by(id=item_id).first()
+    after_id = request.matchdict['id']
+    previous_item = request.dbsession.query(models.Item).filter_by(id=after_id).first()
     # TODO ? request user from session ??
     editor = request.dbsession.query(models.User).filter_by(id=1).first()
-    item = models.Item(
-        name="NEW Item",
-        scenario_id=previous_item.scenario_id,
-        data="NEW Item Data",
-        next=previous_item.next,
-        previous=previous_item.id,
-        creator=editor,
-    )
-    request.dbsession.add(item)
-    request.dbsession.flush()  # we flush because we want to retrieve the id / primary key
-    if previous_item.next >= 0:
-        # meaning: after_items was NOT the last one; update the before_item
-        before_item = request.dbsession.query(models.Item).filter_by(id=previous_item.next).first()
-        before_item.previous = item.id
-    previous_item.next = item.id
-    item_url = request.route_url('item_edit', id=item.id)
-    return HTTPFound(location=item_url)
+
+    # IF there is a datapath and task given, this is a MAP item
+    if 'datapath' in request.params and 'task' in request.params:
+        datapath = request.params['datapath']
+        task_name = request.params['task']
+        scenario = request.dbsession.query(models.Scenario).filter_by(id=previous_item.scenario_id).first()
+        project = get_project_via_rest(scenario.project)
+        map_item = create_map_item(request, editor, scenario, project, datapath, task_name)
+        # set the 'next' and 'previous' props of this item:
+        map_item.next = previous_item.next
+        map_item.previous = previous_item.id
+        request.dbsession.add(map_item)
+        if previous_item.next >= 0:
+            # meaning: after_items was NOT the last one; update the before_item
+            before_item = request.dbsession.query(models.Item).filter_by(id=previous_item.next).first()
+            before_item.previous = map_item.id
+        previous_item.next = map_item.id
+        scenario_url = request.route_url('scenario', id=scenario.id)
+        return HTTPFound(location=scenario_url)
+    else:
+        item = models.Item(
+            name="NEW Item",
+            scenario_id=previous_item.scenario_id,
+            data="NEW Item Data",
+            next=previous_item.next,
+            previous=previous_item.id,
+            creator=editor,
+        )
+        request.dbsession.add(item)
+        request.dbsession.flush()  # we flush because we want to retrieve the id / primary key
+        if previous_item.next >= 0:
+            # meaning: after_items was NOT the last one; update the before_item
+            before_item = request.dbsession.query(models.Item).filter_by(id=previous_item.next).first()
+            before_item.previous = item.id
+        previous_item.next = item.id
+        item_url = request.route_url('item_edit', id=item.id)
+        return HTTPFound(location=item_url)
+
 
 # TODO confirmation and showing  again
 @view_config(route_name='item_delete', renderer='../templates/item.jinja2')
@@ -506,6 +540,7 @@ def grid_save(request):
 
     return {'result': result, 'project_url': project_url, 'datapath': datapath, 'file': file}
 
+@view_config(route_name='project_map', renderer='../templates/project.jinja2')
 @view_config(route_name='project', renderer='../templates/project.jinja2')
 def project(request):
 
@@ -558,8 +593,12 @@ def project(request):
             #dataitemtreelines.append("{}{}{} {} {} - {}".format(fill, pre, name, unit, type, datapath))
             #dataitemtreelines.append("{}{} {} {} - {}".format(pre, name, unit, type, datapath))
             dataitemnodes.append((pre, node.dataitem))
-        tasks_dataitems.append({'name':task.modelwrappername, 'description':task.description, 'dataitemnodes':dataitemnodes})
+        tasks_dataitems.append({'name': task.modelwrappername, 'description': task.description, 'dataitemnodes': dataitemnodes})
         #break  # every task in project contains ALL
-    return {'project': project, 'tasks_dataitems': tasks_dataitems}
+
+    if 'id' in request.matchdict:
+        return {'project': project, 'tasks_dataitems': tasks_dataitems, 'after_item': request.matchdict['id']}
+    else:
+        return {'project': project, 'tasks_dataitems': tasks_dataitems}
 
 

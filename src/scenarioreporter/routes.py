@@ -10,10 +10,12 @@ def includeme(config):
     config.add_route('item_down', '/item/{id}/down')
     config.add_route('item_up', '/item/{id}/up')
     config.add_route('item_new', '/item/new/after/{id}')
+    config.add_route('item_map', '/item/map/after/{id}')
     config.add_route('item_delete', '/item/delete/{id}')
     config.add_route('item', '/item/{id}')
     # JRodos Projects
     config.add_route('projects', '/projects')
+    config.add_route('project_map', '/project/map/after/{id}')
     config.add_route('project', '/project')
     config.add_route('grid_save', '/grid_save')
 

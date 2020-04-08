@@ -1,14 +1,15 @@
 
 {% block content %}
 
-<h2>Map {{ item.id }}</h2>
-
-<script>
-    mapprops = {{ item.data|safe }};
-</script>
+<h2>Map {{ item.name }}</h2>
 
 <p>
     <div id="map_{{ item.id }}" style="height: 400px; width: 100%;"></div>
 </p>
+
+<script>
+    var mapprops = {{ item.data|safe }};
+    create_map_here(mapprops);
+</script>
 
 {% endblock content %}

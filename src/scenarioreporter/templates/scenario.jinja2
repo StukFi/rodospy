@@ -50,6 +50,10 @@ https://unpkg.com/leaflet.nontiledlayer@1.0.7/dist/   -->
     <a href="{{request.route_url('scenario', id=scenario.id)}}">{{ scenario.id|safe }}</a> - {{ scenario.name|safe }}, created by '{{scenario.creator.name}}'</strong>'.
 </p>
 <p>
+   Based on JRodos project: <a href="{{ scenario.project|safe }}">{{ scenario.project|safe }}</a></br>
+   Project: <a href="{{ request.route_url('project') }}?project_url={{ scenario.project|safe }}">{{ request.route_url('project') }}?project_url={{ scenario.project|safe }}</a></br>
+</p>
+<p>
    {{ scenario.data|safe }}
 </p>
 
@@ -76,7 +80,7 @@ https://unpkg.com/leaflet.nontiledlayer@1.0.7/dist/   -->
         -
         <a href="{{request.route_url('item_new', id=item.id|safe) }}">INSERT new TEXT item</a>
         -
-        <a href="{{request.route_url('item_new', id=item.id|safe) }}">INSERT new MAP item</a>
+        <a href="{{request.route_url('item_map', id=item.id|safe) }}">INSERT new MAP item</a>
 
         {# ONLY if this is NOT the last item #}
         {% if item.next >= 0 or item.previous >= 0 %}

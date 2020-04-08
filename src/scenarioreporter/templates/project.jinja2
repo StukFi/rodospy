@@ -39,7 +39,7 @@
     <h2>Endpoints:</h2>
     <ul>
     {#
-        {
+        dataitem = {
             'dataitem_id': 8,
             'dataitem_type': 'Complex',
             'groupname': None,
@@ -64,7 +64,7 @@
                     {% if dataitem['description'] %}
                         {{ task['name'] }} - {{ task['description'] }} -- {{ dataitem['description'] }}
                     {% else %}
-                        {{ pre }}  {#  'pre' generates the 'three' lines #}
+                        {{ pre }}  {#  'pre' generates the 'tree' lines #}
                         <a href="javascript:alert(
                         'name: {{dataitem['name']}}\r\ndescription: {{dataitem['description']}}\r\ndataitem_id: {{dataitem['dataitem_id']}}\r\ndataitem_type: {{dataitem['dataitem_type']}}\r\ngroupname: {{dataitem['groupname']}}\r\nsubstance: {{dataitem['substance']}}\r\nreporttable: {{dataitem['reporttable']}}\r\nshowunit: {{dataitem['showunit']}}\r\nshowparents: {{dataitem['showparents']}}\r\nparent_dataitem_id: {{dataitem['parent_dataitem_id']}}\r\ngrid_id: {{dataitem['grid_id']}}\r\ndataitem_index: {{dataitem['dataitem_index']}}\r\nunit: {{dataitem['unit']}}\r\ndatapath:\r\n  {{dataitem['datapath']}}'
                         )">{{ dataitem['name'] }}</a>
@@ -73,8 +73,12 @@
                 {% if dataitem['dataitem_type']=='GridSeries' %}
                     <!-- - - [ <a href="javascript:alert( '{{ dataitem['datapath']|urlencode }}' )">Download GRID</a> ] -->
                     - -
-                    - [ <a href="scenario/new?project_url={{ project.links[0]['href']|urlencode }}&datapath={{ dataitem['datapath']|urlencode }}&task={{ task['name'] }}">Add Map</a> ]
-                    - [ <a href="grid_save?project_url={{ project.links[0]['href']|urlencode }}&datapath={{ dataitem['datapath']|urlencode }}&task={{ task['name'] }}">Download GRID</a> ]
+                    {% if undefined == after_item  %}
+                        - [ <a href="{{ request.route_url('scenario_new', _query={'project_url': project.links[0]['href'], 'datapath': dataitem['datapath'], 'task': task['name'] } ) }}">Create New Scenario With Map</a> ]
+                    {% else %}
+                        - [ <a href="{{ request.route_url('item_new', id=after_item, _query={'project_url': project.links[0]['href'], 'datapath': dataitem['datapath'], 'task': task['name'] } ) }}">Add Map</a> ]
+                    {% endif %}
+                    - [ <a href="{{ request.route_url('grid_save', _query={'project_url': project.links[0]['href'], 'datapath': dataitem['datapath'], 'task': task['name'] } ) }}">Download GRID</a> ]
                 {% endif %}
             </span><br/>
         {% endfor %} {#  for pre, dataitem in task #}
