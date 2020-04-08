@@ -23,10 +23,12 @@ requires = [
     'transaction',
     'zope.sqlalchemy',
     # rodospy
-    'gdal==3.0.4',
+    'gdal==3.0.4',  # version depending on OS/environment. DEV
+    #'gdal==2.2.4',  # version depending on OS/environment. PRD
     'owslib',
     'numpy',
     'anytree',
+	  'osr'
 ]
 
 tests_require = [
