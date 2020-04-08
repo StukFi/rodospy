@@ -98,9 +98,90 @@ def scenario_new(request):
     datapath = request.params['datapath']
     task_name = request.params['task']
     project = get_project_via_rest(project_url)
-    result = 'NOT OK'
-    file = '-'
 
+    # TODO get current editor from ... session?
+    editor = request.dbsession.query(models.User).filter_by(id=1).first()
+
+    # first create the scenario
+    scenario = create_scenario(request, editor, project)
+
+    # create a text item
+    text_item = create_default_text_item(request, editor, scenario)
+
+    # create a map item
+    map_item = create_map_item(request, editor, scenario, project, datapath, task_name)
+
+    # connect the 2 items together !!
+    map_item.previous = text_item.id
+    text_item.next = map_item.id
+
+    scenario_url = request.route_url('scenario', id=scenario.id)
+    return HTTPFound(location=scenario_url)
+
+def create_scenario(request, editor, project):
+    this_scenario = models.Scenario(
+        name='name',
+        data='data',
+        creator=editor,
+    )
+    request.dbsession.add(this_scenario)
+    # flush to be able to get the scenario.id
+    request.dbsession.flush()
+    this_scenario.name = "Scenario created {} based on '{}' ({}) " \
+        .format(datetime.now().strftime("%d/%m/%y %H:%M"), project.name, project.projectId)
+    scenario_data = []
+    scenario_data.append('<ul>')
+    scenario_data.append('<li> name: {} </li>'.format(project.name))
+    scenario_data.append('<li> projectId: {}</li>'.format(project.projectId))
+    scenario_data.append('<li> username: {}</li>'.format(project.username))
+    scenario_data.append('<li> description: {}</li>'.format(project.description))
+    scenario_data.append('<li> timestepOfPrognosis: {}</li>'.format(project.timestepOfPrognosis))
+    scenario_data.append('<li> timestepOfPronosisUnit: {}</li>'.format(project.timestepOfPronosisUnit))
+    scenario_data.append('<li> durationOfPrognosis: {}</li>'.format(project.durationOfPrognosis))
+    scenario_data.append('<li> durationOfPronosisUnit: {}</li>'.format(project.durationOfPronosisUnit))
+    scenario_data.append('<li> modelchainname: {}</li>'.format(project.modelchainname))
+    # pointer to rodos connection... not to be shown
+    # scenario_data.append('<li> rodos: {}</li>'.format(project.rodos))
+    scenario_data.append('<li> sourcetermNuclides: {}</li>'.format(project.sourcetermNuclides))
+    scenario_data.append('<li> startOfPrognosis: {}</li>'.format(project.startOfPrognosis))
+    scenario_data.append('<li> startOfRelease: {}</li>'.format(project.startOfRelease))
+    scenario_data.append('<li> systemOperationMode: {}</li>'.format(project.systemOperationMode))
+    # scenario_data.append('<li> tasks: {}</li>'.format(project.tasks))
+    # scenario_data.append('<li> uid: {}</li>'.format(project.uid))
+    scenario_data.append('<li> weatherProvider: {}</li>'.format(project.weatherProvider))
+    scenario_data.append('<li> links: {}</li>'.format(project.links[0]['href']))
+    scenario_data.append('<li> dateTimeCreated: {}</li>'.format(project.dateTimeCreated))
+    scenario_data.append('<li> dateTimeModified: {}</li>'.format(project.dateTimeModified))
+    scenario_data.append('</ul>')
+    this_scenario.data = ''.join(scenario_data)
+    #request.dbsession.flush()
+    return this_scenario
+
+
+
+def create_default_text_item(request, editor, scenario):
+    text_item = models.Item(
+        name='name',
+        scenario_id=scenario.id,
+        data='',
+        next=-1,
+        previous=-1,
+        creator=editor,
+    )
+    request.dbsession.add(text_item)
+    # flush to be able to get the item.id's
+    request.dbsession.flush()
+    text_item.name = "This is name of item {}".format(text_item.id)
+    text_item.data = "This is data of item {} <br/> {} <br/> {}".format(
+        text_item.id,
+        request.params['project_url'],
+        request.params['datapath'])
+    return text_item
+
+
+
+def create_map_item(request, editor, scenario, project, datapath, task_name):
+    # now add one start item AND a map
     for task in project.tasks:
         # is gridserie.datapath unique per task or overall ????
         for gridserie in task.gridseries:
@@ -134,61 +215,10 @@ def scenario_new(request):
                     new_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['sld_storage'], os.path.sep, scenario_dir, os.path.sep, 'jrodos.sld')
                     fix_and_save_sld(old_sld, new_sld)
 
-                # TODO get current editor from ... session?
-                editor = request.dbsession.query(models.User).filter_by(id=1).first()
-                scenario = models.Scenario(
-                    name='name',
-                    data='data',
-                    creator=editor,
-                )
-                request.dbsession.add(scenario)
-                # flush to be able to get the scenario.id
-                request.dbsession.flush()
-                scenario_id = scenario.id
-                scenario.name = "Scenario created {} based on '{}' ({}) " \
-                    .format(datetime.now().strftime("%d/%m/%y %H:%M"), project.name, project.projectId)
-
-                scenario_data = []
-                scenario_data.append('<ul>')
-                scenario_data.append('<li> name: {} </li>'.format(project.name))
-                scenario_data.append('<li> projectId: {}</li>'.format(project.projectId))
-                scenario_data.append('<li> username: {}</li>'.format(project.username))
-                scenario_data.append('<li> description: {}</li>'.format(project.description))
-                scenario_data.append('<li> timestepOfPrognosis: {}</li>'.format(project.timestepOfPrognosis))
-                scenario_data.append('<li> timestepOfPronosisUnit: {}</li>'.format(project.timestepOfPronosisUnit))
-                scenario_data.append('<li> durationOfPrognosis: {}</li>'.format(project.durationOfPrognosis))
-                scenario_data.append('<li> durationOfPronosisUnit: {}</li>'.format(project.durationOfPronosisUnit))
-                scenario_data.append('<li> modelchainname: {}</li>'.format(project.modelchainname))
-                # pointer to rodos connection... not to be shown
-                # scenario_data.append('<li> rodos: {}</li>'.format(project.rodos))
-                scenario_data.append('<li> sourcetermNuclides: {}</li>'.format(project.sourcetermNuclides))
-                scenario_data.append('<li> startOfPrognosis: {}</li>'.format(project.startOfPrognosis))
-                scenario_data.append('<li> startOfRelease: {}</li>'.format(project.startOfRelease))
-                scenario_data.append('<li> systemOperationMode: {}</li>'.format(project.systemOperationMode))
-                #scenario_data.append('<li> tasks: {}</li>'.format(project.tasks))
-                #scenario_data.append('<li> uid: {}</li>'.format(project.uid))
-                scenario_data.append('<li> weatherProvider: {}</li>'.format(project.weatherProvider))
-                scenario_data.append('<li> links: {}</li>'.format(project.links[0]['href']))
-                scenario_data.append('<li> dateTimeCreated: {}</li>'.format(project.dateTimeCreated))
-                scenario_data.append('<li> dateTimeModified: {}</li>'.format(project.dateTimeModified))
-                scenario_data.append('</ul>')
-                scenario.data = ''.join(scenario_data)
-
-                # adding TEXT item
-                text_item = models.Item(
-                    name='name',
-                    scenario_id=scenario_id,
-                    data='',
-                    next=-1,
-                    previous=-1,
-                    creator=editor,
-                )
-                request.dbsession.add(text_item)
-
                 # adding MAP item
                 map_item = models.Item(
                     name='map',
-                    scenario_id=scenario_id,
+                    scenario_id=scenario.id,
                     data='',
                     next=-1,
                     previous=-1,
@@ -198,12 +228,8 @@ def scenario_new(request):
 
                 # flush to be able to get the item.id's
                 request.dbsession.flush()
-                text_item_id = text_item.id
+
                 map_item_id = map_item.id
-                text_item.name = "This is name of item {}".format(text_item_id)
-                text_item.data = "This is data of item {} <br/> {} <br/> {} <br/> {}".format(text_item_id, project_url, datapath, file)
-                text_item.next = map_item_id
-                map_item.previous = text_item_id
                 map_data = {'div': map_item_id,
                             'wms_server_url': settings.rodospy_settings['wps']['wms_server_url'],
                             'map_file': '{}/mapserver.map'.format(scenario_dir),
@@ -212,8 +238,8 @@ def scenario_new(request):
                             'timestep_period': 'PT{}{}'.format(project.timestepOfPrognosis, project.durationOfPronosisUnit.upper()), # 'PT3600S' or 'PT60M'
                             'sld_url': settings.rodospy_settings['wps']['sld_base_url']+'/'+scenario_dir+'/jrodos.sld'}
                 map_item.data = json.dumps(map_data)
-                scenario_url = request.route_url('scenario', id=scenario_id)
-                return HTTPFound(location=scenario_url)
+                return map_item
+
 
 @view_config(route_name='item', renderer='../templates/item.jinja2')
 def item(request):
@@ -291,6 +317,7 @@ def item_up(request):
 
 @view_config(route_name='item_new', renderer='../templates/scenario.jinja2')
 def item_new(request):
+    # http://localhost:6543/item/new/after/<item-id>
     item_id = request.matchdict['id']
     previous_item = request.dbsession.query(models.Item).filter_by(id=item_id).first()
     # TODO ? request user from session ??
