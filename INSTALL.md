@@ -62,10 +62,40 @@ From wiki docs:
 
 Run project `pserve development.ini`
 
-Development with PycharmCE from root dir
+## Development with PycharmCE
 
-https://trac.osgeo.org/gdal/wiki/BuildingOnUnixGDAL25dev
+Open project (at this moment the branch 'scenarioreporter') in PyCharmCE so you have src and venv (created as show above in the root dir)
+
+Now SET the python interpreter for the project:
+Go to project settings: File/Setting/Project: scenarioreporter
+Point the 'Project Interpreter' to the venv/bin/python in the venv
+If all goes ok, you will see all modules that you added earlier there in the list.
+
+Now to be able to debug: in upper right corner of PycharmCE, click 'Add Configuration'
+
+Create a NEW configuration by either clicking the plus sign or the Python template and then 'save configuration'
+
+Fill in the right values: 
+Name: pserve development
+Script path: browse to the pserve binary in your venv/bin directory (FULL PATH)
+Parameters: development.ini --reload
+Working directory: browse to the src dir
+Click OK
+Debug by selecting this configuration and clicking the little 'bug' button
+You should now point your browser to http://localhost:6543
+
+Alternative (without debugging), is to type in the terminal-panel of Pycharm:
+- `source venv/bin/activate` # to activate your virtual env AND make 'pserve' appear in your PATH
+- `pserve development.ini --reload` 
+You should now point your browser to http://localhost:6543 
+
+
+## CentOS7
+
+CentOS7 does NOT have a recent GDAL (not even in 'epel'), so compile/install GDAL first: 
 https://trac.osgeo.org/gdal/wiki/BuildingOnUnix
+
+Then compile Mapserver (to have it use the same GDAL)
 
 yum install libsqlite3x-devel libsqlite3x automake libtool proj-epsg
 
