@@ -97,6 +97,7 @@ def scenario_new(request):
     project_url = request.params['project_url']
     datapath = request.params['datapath']
     task_name = request.params['task']
+
     project = get_project_via_rest(project_url)
 
     # TODO get current editor from ... session?
@@ -106,7 +107,7 @@ def scenario_new(request):
     scenario = create_scenario(request, editor, project)
 
     # create a text item
-    text_item = create_default_text_item(request, editor, scenario)
+    text_item = create_intro_text_item(request, editor, scenario)
 
     # create a map item
     map_item = create_map_item(request, editor, scenario, project, datapath, task_name)
@@ -154,12 +155,10 @@ def create_scenario(request, editor, project):
     scenario_data.append('<li> dateTimeModified: {}</li>'.format(project.dateTimeModified))
     scenario_data.append('</ul>')
     this_scenario.data = ''.join(scenario_data)
-    #request.dbsession.flush()
     return this_scenario
 
 
-
-def create_default_text_item(request, editor, scenario):
+def create_intro_text_item(request, editor, scenario):
     text_item = models.Item(
         name='name',
         scenario_id=scenario.id,
@@ -172,12 +171,16 @@ def create_default_text_item(request, editor, scenario):
     # flush to be able to get the item.id's
     request.dbsession.flush()
     text_item.name = "This is name of item {}".format(text_item.id)
-    text_item.data = "This is data of item {} <br/> {} <br/> {}".format(
+    text_item.data = """This is data of item {} <br/>Project url: {}Datapath: <br/> {}<br>
+    But could also be an introduction with information about this scenario,</br>
+    or why this scenario should be reported.<br/> 
+    More details... <br/>
+    Etc etc... <br/>
+    """.format(
         text_item.id,
         request.params['project_url'],
         request.params['datapath'])
     return text_item
-
 
 
 def create_map_item(request, editor, scenario, project, datapath, task_name):
@@ -317,7 +320,7 @@ def item_up(request):
 
 @view_config(route_name='item_new', renderer='../templates/scenario.jinja2')
 def item_new(request):
-    # http://localhost:6543/item/new/after/<item-id>
+    # http://localhost:6543/item/new/after/<id>
     item_id = request.matchdict['id']
     previous_item = request.dbsession.query(models.Item).filter_by(id=item_id).first()
     # TODO ? request user from session ??
@@ -535,7 +538,7 @@ def project(request):
                                            dataitem=None)
         # mmm, pity, we cannot use anytree.RenderTree in Jinja2...
         # so cannot pass the actual Node's
-        # we create a array of dataitems here
+        # we create an array of dataitems here
         dataitemnodes = []
 
         for pre, fill, node in RenderTree(dataitemtree[0]):

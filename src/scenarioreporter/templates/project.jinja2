@@ -9,8 +9,8 @@
 
 <div class="content">
 
-  <h1>Start new Scenario Report</h1>
-  <p>Start a new Scenario Report by clicking a  [ Start Scenario Report ] button of one of the available endpoints</p>
+  <h1>JRodos Project</h1>
+  <p>Update or Start a Scenario Report based on this JRodos Project by clicking an [ Add Map ] button of one of the available endpoints</p>
 
   <h2>JRodos Project information: {{ project.name}}</h2>
     <ul>
@@ -36,7 +36,7 @@
         <li>dateTimeModified: {{ project.dateTimeModified }}</li>
     </ul>
 
-    <h2>Models:</h2>
+    <h2>Endpoints:</h2>
     <ul>
     {#
         {
@@ -73,7 +73,7 @@
                 {% if dataitem['dataitem_type']=='GridSeries' %}
                     <!-- - - [ <a href="javascript:alert( '{{ dataitem['datapath']|urlencode }}' )">Download GRID</a> ] -->
                     - -
-                    - [ <a href="scenario/new?project_url={{ project.links[0]['href']|urlencode }}&datapath={{ dataitem['datapath']|urlencode }}&task={{ task['name'] }}">Start Scenario Report</a> ]
+                    - [ <a href="scenario/new?project_url={{ project.links[0]['href']|urlencode }}&datapath={{ dataitem['datapath']|urlencode }}&task={{ task['name'] }}">Add Map</a> ]
                     - [ <a href="grid_save?project_url={{ project.links[0]['href']|urlencode }}&datapath={{ dataitem['datapath']|urlencode }}&task={{ task['name'] }}">Download GRID</a> ]
                 {% endif %}
             </span><br/>

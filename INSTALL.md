@@ -52,12 +52,15 @@ See: https://docs.pylonsproject.org/projects/pyramid-cookbook/en/latest/developm
 
 From wiki docs:
 
+    # note that the 'alembic' and 'initialize_scenarioreporter_db' are added to the bin PATH of your venv
+    # if NOT in src dir:
+    cd src
     # Generate your first revision.
-    env/bin/alembic -c development.ini revision --autogenerate -m "init"
+    alembic -c development.ini revision --autogenerate -m "init"
     # Upgrade to that revision.
-    env/bin/alembic -c development.ini upgrade head
+    alembic -c development.ini upgrade head
     # Load default data.
-    env/bin/initialize_scenarioreporter_db development.ini
+    initialize_scenarioreporter_db development.ini
 
 
 Run project `pserve development.ini`

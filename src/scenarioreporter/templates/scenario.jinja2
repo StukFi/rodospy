@@ -45,7 +45,7 @@ https://unpkg.com/leaflet.nontiledlayer@1.0.7/dist/   -->
 <script src="{{request.static_url('scenarioreporter:static/rodosweb.js')}}"></script>
 
 
-<h2>Scenario:</h2>
+<h2>Scenario Report:</h2>
 <p>
     <a href="{{request.route_url('scenario', id=scenario.id)}}">{{ scenario.id|safe }}</a> - {{ scenario.name|safe }}, created by '{{scenario.creator.name}}'</strong>'.
 </p>
@@ -53,7 +53,9 @@ https://unpkg.com/leaflet.nontiledlayer@1.0.7/dist/   -->
    {{ scenario.data|safe }}
 </p>
 
-<h2>Items:</h2>
+
+
+<h2>Content:</h2>
 
 <hr/>
 
@@ -72,7 +74,10 @@ https://unpkg.com/leaflet.nontiledlayer@1.0.7/dist/   -->
         -
         <a href="{{request.route_url('item_down', id=item.id|safe) }}">Move DOWN</a>
         -
-        <a href="{{request.route_url('item_new', id=item.id|safe) }}">INSERT new item</a>
+        <a href="{{request.route_url('item_new', id=item.id|safe) }}">INSERT new TEXT item</a>
+        -
+        <a href="{{request.route_url('item_new', id=item.id|safe) }}">INSERT new MAP item</a>
+
         {# ONLY if this is NOT the last item #}
         {% if item.next >= 0 or item.previous >= 0 %}
             -
