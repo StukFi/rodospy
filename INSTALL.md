@@ -13,16 +13,22 @@ Below is briefly described the installation for Ubuntu under Python3 virtual env
 * `cd rodospy`
 * Create virtual enviroment `python3 -m venv venv`
 * Activate it `source venv/bin/activate`
-* Install "easy" depencencies `pip install wheel numpy python-dateutil owslib`
-* Install GDAL build dependencies `sudo apt install libgdal-dev python3-dev gdal-bin`
-* Check GDAL version using command `gdalinfo`
+* Install "easy" depencencies 
+    - `pip install wheel numpy python-dateutil owslib` 
+* Install GDAL build dependencies 
+    - `sudo apt install libgdal-dev python3-dev gdal-bin`  # on Debian/Ubuntu
+    - `sudo yum install gdal gdal-devel python3-devel`  # CentOS7
+* Check GDAL version using command `gdalinfo --version`
 * Set necessary env variables:
 ```
 export CPLUS_INCLUDE_PATH=/usr/include/gdal
 
 export C_INCLUDE_PATH=/usr/include/gdal
 ```
-* Install correspondent version using pip, probably `pip install GDAL==2.2.3`
+* Install correspondent version using pip:
+    - `pip install GDAL==2.2.3` # Ubuntu 16/18
+    - `pip install GDAL==3.0.4` # Debian Testing/Bullseye
+    - `pip install GDAL==2.2.4` # Centos7 (self compiled GDAL and mapserver)
 
 ### Optional
 
@@ -40,7 +46,7 @@ Development using PyCharmCE (Free Community Edition)
 See: https://docs.pylonsproject.org/projects/pyramid-cookbook/en/latest/development_tools/pycharm.html#using-pycharm
 
 
-* `cd scenarioreporter`
+* `cd src/`
 
 * `pip install -e ".[testing]"`
 
@@ -57,4 +63,12 @@ From wiki docs:
 Run project `pserve development.ini`
 
 Development with PycharmCE from root dir
+
+https://trac.osgeo.org/gdal/wiki/BuildingOnUnixGDAL25dev
+https://trac.osgeo.org/gdal/wiki/BuildingOnUnix
+
+yum install libsqlite3x-devel libsqlite3x automake libtool proj-epsg
+
+
+
 
