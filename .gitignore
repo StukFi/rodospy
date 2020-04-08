@@ -24,3 +24,4 @@ coverage
 test
 *.sqlite
 .idea
+log.txt
