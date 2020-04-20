@@ -1,0 +1,22 @@
+
+# Example service file for test server
+# As root, put in /etc/systemd/system, systemctl daemon-reload, systemctl enable pyramid, systemctl status -l pyramid
+
+[Unit]
+Description=pyramid_development
+After=network.target home-duivenvr.home
+
+[Service]
+# we compiled gdal ourselves, installed in (gdal default) /usr/local/lib/ so we have to update LD_LIBRARY_PATH
+Environment="LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH"
+# now 'export' these to the systemd env (space separated)
+PassEnvironment=LD_LIBRARY_PATH
+
+# your Working dir
+WorkingDirectory=/home/duivenvr/git/rodospy/src
+# your pserve path with ini
+ExecStart=/home/duivenvr/git/rodospy/venv/bin/pserve /home/duivenvr/git/rodospy/src/development.ini
+
+[Install]
+WantedBy=multi-user.target
+
