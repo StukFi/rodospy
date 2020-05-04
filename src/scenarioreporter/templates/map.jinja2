@@ -6,6 +6,12 @@
 <p>
     <div id="map_{{ item.id }}" style="height: 400px; width: 100%;"></div>
 </p>
+<p>
+    <span id="datapath_{{ item.id }}">no datapath</span>
+</p>
+<p>
+    <span id="path_{{ item.id }}">...</span>
+</p>
 
 <script>
     var mapprops = {{ item.data|safe }};

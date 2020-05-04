@@ -157,6 +157,7 @@ class RodosConnection(object):
         self.storage = self.w["file_storage"]
         self.r = settings["rest"]
         self.rest_url = self.r["url"]
+        # Richard: is this needed?
         # check that connections are OK
         self.wps_capabilities = self.wps.getcapabilities()
         self.projects = self.get_projects()
@@ -165,19 +166,30 @@ class RodosConnection(object):
         "get refreshed list of projects"
         self.projects = self.get_projects()
 
-    def get_projects(self):  # fetch the project list
+    def get_projects(self,
+                     filters={}): # fetch the project list
         """
         Get listing of projects.
-        project_uid as parameter if only one project information wanted."
+        Filters is a dictionary of project parameters.
+        Possible dict values are: projectId, uid, name,
+        description, username, modelchainname, extendedProjectInfo,
+        dateTimeCreated, dateTimeModified
         """
         # rest request
-        response = urlopen(self.rest_url + "/projects")
+        response = urlopen( self.rest_url + "/projects" )
         proj_dict = json.load(reader(response),
                               object_hook=datetime_parser)["content"]
         # create list of project classes
         projects = []
         for p in proj_dict:
-            projects.append(Project(self, p))
+            # below does not work in Python3 ?
+            # https://stackoverflow.com/questions/54691491/how-is-the-less-than-operator-for-dictionaries-defined-in-python-2
+            #if filters.items() <= p.items():
+            #    projects.append(Project(self, p))
+            for key in filters.keys():
+                # 'casting' values to strings here, because it is not always clear if values are txt or integers
+                if key in filters.keys() and f'{p.get(key)}' == f'{filters[key]}':
+                    projects.append(Project(self, p))
         return projects
 
     def get_npps(self):
@@ -206,9 +218,37 @@ class Project(object):
         project_id is integer
         """
         self.rodos = rodos
-        self.tasks = []
         for key in values:
-            setattr(self, key, values[key])
+            setattr(self,key,values[key])
+        # load details only when necessary
+        self.details_dict = None
+        self.tasks = []
+
+    # def load(self, project_rest_url=None):
+    #     """Load project metadata"""
+    #     # request project details from rest service
+    #     if project_rest_url is not None:
+    #         url = project_rest_url
+    #     else:
+    #         url = self.rodos.rest_url + "/projects/{:d}".format(self.projectId)
+    #     response = urlopen(url)
+    #     details_dict = json.load(reader(response),
+    #                              object_hook=datetime_parser)
+    #     # set metadata as attributes
+    #     for key in details_dict:
+    #         if (key not in ("tasks", "extendedProjectInfo")):
+    #             setattr(self, key, details_dict[key])
+    #         elif key == "extendedProjectInfo":
+    #             for key2 in details_dict[key]:
+    #                 setattr(self, key2, details_dict[key][key2])
+    #     # set source term nuclides as list, or empty list as None
+    #     if self.sourcetermNuclides:
+    #         self.sourcetermNuclides = self.sourcetermNuclides.split(",")
+    #     else:
+    #         self.sourcetermNuclides = []
+    #     for t in details_dict["tasks"]:
+    #         self.tasks.append(Task(self, t))
+    #     return self
 
     def load(self, project_rest_url=None):
         """Load project metadata"""
@@ -220,22 +260,36 @@ class Project(object):
         response = urlopen(url)
         details_dict = json.load(reader(response),
                                  object_hook=datetime_parser)
+        self.details_dict = details_dict
         # set metadata as attributes
         for key in details_dict:
-            if (key not in ("tasks", "extendedProjectInfo")):
-                setattr(self, key, details_dict[key])
-            elif key == "extendedProjectInfo":
+            if (key not in ("tasks","extendedProjectInfo")):
+                setattr(self,key,details_dict[key])
+            elif key=="extendedProjectInfo":
                 for key2 in details_dict[key]:
-                    setattr(self, key2, details_dict[key][key2])
-        # set source term nuclides as list, or empty list as None
-        if self.sourcetermNuclides:
-            self.sourcetermNuclides = self.sourcetermNuclides.split(",")
-        else:
-            self.sourcetermNuclides = []
+                    setattr(self,key2,details_dict[key][key2])
+        # set source term nuclides as list
+        self.sourcetermNuclides = self.sourcetermNuclides.split(",")
         for t in details_dict["tasks"]:
-            self.tasks.append(Task(self, t))
-        return self
+            self.tasks.append ( Task(self,t) )
 
+    def get_tasks(self, filters={}):
+        "Get tasks and filter by dictionary."
+        if self.details_dict==None:
+            self.load()
+        tasks = []
+        for t in self.details_dict["tasks"]:
+            # below does not work in Python3 ?
+            # https://stackoverflow.com/questions/54691491/how-is-the-less-than-operator-for-dictionaries-defined-in-python-2
+            # if filters.items()<=t.items():
+            #     tasks.append ( Task(self,t) )
+            for key in filters.keys():
+                # 'casting' values to strings here, because it is not always clear if values are txt or integers
+                data_items = t.get('dataitems')
+                for data_item in data_items:
+                    if key in data_item.keys() and f'{data_item.get(key)}' == f'{filters[key]}':
+                        tasks.append(Task(self, t))
+        return tasks
 
 class Task(object):
     """
@@ -271,6 +325,10 @@ class Task(object):
         self.inhalation_dose = {}
         self.skin_dose = {}
         self.groupnames = []
+        # Richard
+        self.dep = {}
+        self.potential_dose = {}
+        self.potential_dose_ingestion = {}
 
         # classify grid series to dictionaries
         # TODO: some items still missing (FDMT, Emersim, DEPOM etc.)
@@ -426,6 +484,16 @@ class Task(object):
                 self.inhalation_dose[i.name] = i
             elif i.groupname == "skin.dose":
                 self.skin_dose[i.name] = i
+            # Richard
+            elif i.groupname == "Dep":
+                self.dep[i.name] = i
+            elif i.groupname == 'PotentialDose_AllRelevant':
+                self.potential_dose[i.name] = i
+            elif i.groupname == 'PotentialDose_Ingestion':
+                self.potential_dose_ingestion[i.name] = i
+            # TODO: handle all groupnames and names !!
+            #else:
+            #    print(f'group: {i.groupname} name: {i.name}')
 
 
 class GridSeries(object):
@@ -543,6 +611,55 @@ class GridSeries(object):
         gis_data = gpkg_driver.Open(self.gpkg_file())
         layer = gis_data.GetLayer(0)  # grid
         return layer.GetExtent()
+
+    def data_extent(self, time_value=None):
+        """
+        Get min and max value and their lon/lat locations
+        Returned as tuple [(min_value, (lon, lat), timestamp), (max_value, (lon, lat), timestamp)]
+        Filter by time value is supported.
+        """
+        gis_data = gpkg_driver.Open(self.gpkg_file())
+        layer = gis_data.GetLayer(2)  # view
+        if time_value != None:
+            epoch_time = int(time_value.timestamp())
+            layer.SetAttributeFilter("Time={:d}".format(epoch_time))
+        max_value = 0
+        max_timestamp = None
+        max_lon = None
+        max_lat = None
+
+        min_value = 1e99
+        min_timestamp = None
+        min_lon = None
+        min_lat = None
+
+        for feature in layer:
+            value = feature.GetField("Value")
+            if value > max_value:
+                max_value = value
+                max_geom_wkt = feature.GetGeometryRef().ExportToWkt()
+                max_timestamp = feature.GetField("Time")
+                if max_geom_wkt != None:
+                    transform = osr.CoordinateTransformation(layer.GetSpatialRef(), wgs84_cs)
+                    polygon = ogr.CreateGeometryFromWkt(max_geom_wkt)
+                    # use point instead of polygon
+                    point = polygon.PointOnSurface()
+                    max_lon, max_lat, dummy = transform.TransformPoint(point.GetX(), point.GetY())
+            if value < min_value:
+                min_value = value
+                min_geom_wkt = feature.GetGeometryRef().ExportToWkt()
+                min_timestamp = feature.GetField("Time")
+                if min_geom_wkt != None:
+                    transform = osr.CoordinateTransformation(layer.GetSpatialRef(), wgs84_cs)
+                    polygon = ogr.CreateGeometryFromWkt(min_geom_wkt)
+                    # use point instead of polygon
+                    point = polygon.PointOnSurface()
+                    min_lon, min_lat, dummy = transform.TransformPoint(point.GetX(), point.GetY())
+        if max_value > 0:
+            max_timestamp = datetime.fromtimestamp(max_timestamp)
+        if min_value < 1e99:
+            min_timestamp = datetime.fromtimestamp(min_timestamp)
+        return [(min_value, (min_lon, min_lat), min_timestamp), (max_value, (max_lon, max_lat), max_timestamp)]
 
     def max(self, time_value=None):
         """

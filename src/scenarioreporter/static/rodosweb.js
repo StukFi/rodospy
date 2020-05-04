@@ -6,9 +6,19 @@ function create_map_here(mapprops) {
     var WMS_SERVER_URL = mapprops.wms_server_url;
     var PROGNOSIS_START = mapprops.prognosis_start;
     var PROGNOSIS_END = mapprops.prognosis_end;
-    var SLD_URL = mapprops.sld_url;
-    var TIMESTEP_PERIOD = mapprops.timestep_period
+    var TIMESTEP_PERIOD = mapprops.timestep_period;
+    var SLD_URL = '';
+    if(typeof(mapprops.sld_url) !== "undefined"){
+        SLD_URL = mapprops.sld_url;
+    }
 
+    // show the datapath, if defined
+    if (mapprops.datapath){
+        document.getElementById('datapath_'+mapprops.div).innerHTML = mapprops.datapath;
+    }
+    if (mapprops.map_file){
+        document.getElementById('path_'+mapprops.div).innerHTML = 'cd /var/www/mapserver/'+mapprops.map_file.replace('/mapserver.map','');
+    }
     var map = L.map(MAP_DIV, {});
     L.control.scale({position: 'topright', imperial: false, maxWidth: 200}).addTo(map);
     //L.control.mousePosition().addTo(map);
@@ -40,15 +50,26 @@ function create_map_here(mapprops) {
     var layers = 'jrodoslayer';
     var styles = '';
     var WMS_TIME_SERVER = WMS_SERVER_URL+MAP_FILE;
-    var wmsLayer = L.nonTiledLayer.wms(WMS_TIME_SERVER, {
+    var wms_options = {
         layers: layers,
         styles: styles,
         format: 'image/png',
         transparent: true,
         attribution: 'RIVM',
         version: '1.3.0',
-        SLD: SLD_URL   // TODO make this optional as sometimes there is no SLD (TODO 2: create one on the fly...)
-    });
+    }
+    var legend_url = WMS_TIME_SERVER + '&version=1.1.1&service=WMS&request=GetLegendGraphic&format=image%2Fpng&layer=' +
+        layers+'&style=' + styles +
+        '&legend_options=fontName:Arial;fontAntiAliasing:true;fontColor:0x000033;fontSize:10;bgColor:0xEEEEEE;labelMargin:30';
+    //console.log(legend_url);
+    // TODO make this optional as sometimes there is no SLD (TODO 2: create one on the fly...)
+    if (SLD_URL.length > 0){
+        wms_options.SLD = SLD_URL;
+        legend_url += '&SLD='+SLD_URL
+    }
+    var legend = L.wmsLegend(legend_url)
+    legend.addTo(map);
+    var wmsLayer = L.nonTiledLayer.wms(WMS_TIME_SERVER, wms_options);
 
     var timeDimension = new L.TimeDimension({
       timeInterval: PROGNOSIS_START+'/'+PROGNOSIS_END,  // '2019-09-02T05:00:00.000000Z/2019-09-02T06:00:00.000000Z'
@@ -128,9 +149,10 @@ function create_map_here(mapprops) {
                           //'propertyName': 'NAME,AREA_CODE,DESCRIPTIO'
                       }
                   );
-
+      console.log(url)
       // Send the request and create a popup showing the response
       /*
+      // https://javascript.info/fetch  ??
       request({
           url: url,
           type: 'json',

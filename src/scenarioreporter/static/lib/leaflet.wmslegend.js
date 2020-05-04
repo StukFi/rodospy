@@ -8,7 +8,7 @@ L.Control.WMSLegend = L.Control.extend({
         uri: ''
     },
 
-    onAdd: function () {
+    onAdd: function (map) {
         var controlClassName = 'leaflet-control-wms-legend',
             legendClassName = 'wms-legend',
             stop = L.DomEvent.stopPropagation;
@@ -16,7 +16,6 @@ L.Control.WMSLegend = L.Control.extend({
         this.img = L.DomUtil.create('img', legendClassName, this.container);
         this.img.src = this.options.uri;
         this.img.alt = 'Legend';
-
         L.DomEvent
             .on(this.img, 'click', this._click, this)
             .on(this.container, 'click', this._click, this)
@@ -56,6 +55,5 @@ L.Control.WMSLegend = L.Control.extend({
 L.wmsLegend = function (uri) {
     var wmsLegendControl = new L.Control.WMSLegend;
     wmsLegendControl.options.uri = uri;
-    map.addControl(wmsLegendControl);
     return wmsLegendControl;
 };

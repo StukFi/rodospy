@@ -215,11 +215,6 @@ def create_map_item(request, editor, scenario, project, datapath, task_name):
                 mapfile.write(mapfile_content)
                 mapfile.close()
 
-                if file_names['sld']:
-                    old_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['file_storage'], os.path.sep, scenario_dir, os.path.sep, file_names['sld'])
-                    new_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['sld_storage'], os.path.sep, scenario_dir, os.path.sep, 'jrodos.sld')
-                    fix_and_save_sld(old_sld, new_sld)
-
                 # adding MAP item
                 map_item = models.Item(
                     name=datapath.replace('Model data=;=Output=;=Prognostic Results=;=', '').replace('=;=', ' '),
@@ -241,7 +236,22 @@ def create_map_item(request, editor, scenario, project, datapath, task_name):
                             'prognosis_start': project.startOfPrognosis.isoformat(),
                             'prognosis_end': prognosis_end.isoformat(),
                             'timestep_period': 'PT{}{}'.format(project.timestepOfPrognosis, project.durationOfPronosisUnit.upper()), # 'PT3600S' or 'PT60M'
-                            'sld_url': settings.rodospy_settings['wps']['sld_base_url']+'/'+scenario_dir+'/jrodos.sld'}
+                            #'sld_url': settings.rodospy_settings['wps']['sld_base_url']+'/'+scenario_dir+'/jrodos.sld',
+                            'datapath': datapath   # extra info because datapath is ONLY unique key in tree
+                           }
+
+                # check IF we received an sld file
+                # if so: fix it, so it can be use by mapserver
+                #        AND create a sld_url in the map_data object
+                if file_names['sld']:
+                    old_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['file_storage'], os.path.sep, scenario_dir, os.path.sep, file_names['sld'])
+                    new_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['sld_storage'], os.path.sep, scenario_dir, os.path.sep, 'jrodos.sld')
+                    fix_and_save_sld(old_sld, new_sld)
+                    # AND create a sld_url in th map_data/settings so it will be used
+                    map_data['sld_url'] = settings.rodospy_settings['wps']['sld_base_url']+'/'+scenario_dir+'/jrodos.sld'
+                else:
+                    # TODO: create some sld ??
+                    pass
                 map_item.data = json.dumps(map_data)
                 return map_item
 
@@ -511,7 +521,8 @@ def get_project_via_rest(rodos_rest_project_url):
     p = rodospy.Project(None, {})
     p.rodos = rodos
     rodos_project = p.load(rodos_rest_project_url)
-    return rodos_project
+    #return rodos_project
+    return p
 
 @view_config(route_name='grid_save', renderer='../templates/grid_save.jinja2')
 def grid_save(request):
