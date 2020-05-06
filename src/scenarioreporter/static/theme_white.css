@@ -159,3 +159,11 @@ button, input, optgroup, select, textarea {
 div.ck-content {
     color:black;
 }
+
+/* this is the chk-editor table: always 100% */
+figure.table > table {
+    width: 100%;
+}
+figure.table  td {
+    min-width: 30% !important;
+}
