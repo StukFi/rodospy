@@ -271,13 +271,15 @@ class Project(object):
             elif key=="extendedProjectInfo":
                 for key2 in details_dict[key]:
                     setattr(self,key2,details_dict[key][key2])
-        # set source term nuclides as list
-        self.sourcetermNuclides = self.sourcetermNuclides.split(",")
+        if self.sourcetermNuclides:
+            self.sourcetermNuclides = self.sourcetermNuclides.split(",")
+        else:
+            self.sourcetermNuclides = []
         for t in details_dict["tasks"]:
-            self.tasks.append ( Task(self,t) )
+            self.tasks.append(Task(self, t))
 
     def get_tasks(self, filters={}):
-        "Get tasks and filter by dictionary."
+        """Get tasks and filter by dictionary."""
         if self.details_dict==None:
             self.load()
         tasks = []
