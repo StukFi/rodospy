@@ -339,7 +339,7 @@ def item_map(request):
     # send to project so user can choose form which endpoint he/she wants to add a map
     project_url = request.route_url('project_map', id=after_id, _query={'project_url': scenario.project})
     return HTTPFound(location=project_url)
-
+    #return dict(scenario=scenario, location=project_url)
 
 @view_config(route_name='item_new', renderer='../templates/scenario.jinja2')
 def item_new(request):
@@ -582,6 +582,7 @@ def project(request):
             else:
                 dataitemtree[i] = AnyNode(id=dataitems[i]['name'], parent=None,
                                            dataitem=None)
+
         # mmm, pity, we cannot use anytree.RenderTree in Jinja2...
         # so cannot pass the actual Node's
         # we create an array of dataitems here

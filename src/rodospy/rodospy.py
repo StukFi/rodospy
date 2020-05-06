@@ -4,8 +4,8 @@ import osr
 import ogr
 import os
 from datetime import datetime, timedelta
-from urllib.request import Request
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 import json
 import codecs
 import tempfile
@@ -260,7 +260,15 @@ class Project(object):
             url = project_rest_url
         else:
             url = self.rodos.rest_url + "/projects/{:d}".format(self.projectId)
-        response = urlopen(url)
+        try:
+            response = urlopen(url)
+        except URLError as e:
+            # non excisting project throw a 500...
+            # while url is actually pretty descriptive: http://jrodos.dev.cal-net.nl/rest-2.0/jrodos/projects/665
+            # urllib does NOT provide any response object...
+            # TODO add some exception
+            print(e.reason)
+            return
         details_dict = json.load(reader(response),
                                  object_hook=datetime_parser)
         self.details_dict = details_dict
@@ -335,6 +343,7 @@ class Task(object):
         self.groupnames = []
         # Richard
         self.dep = {}
+        self.eta = {}
         self.potential_dose = {}
         self.potential_dose_ingestion = {}
 
@@ -493,19 +502,21 @@ class Task(object):
             elif i.groupname == "skin.dose":
                 self.skin_dose[i.name] = i
             # Richard
-            elif i.groupname == "Dep":
+            elif i.groupname == 'Dep':
                 self.dep[i.name] = i
             elif i.groupname == 'PotentialDose_AllRelevant':
                 self.potential_dose[i.name] = i
             elif i.groupname == 'PotentialDose_Ingestion':
                 self.potential_dose_ingestion[i.name] = i
+            elif i.groupname == 'Eta' or i.groupname == 'Eta.Hemisphere':
+                self.eta[i.name] = i
             # TODO: handle all groupnames and names !!
-            #else:
+            # else:
             #    print(f'group: {i.groupname} name: {i.name}')
 
 
 class GridSeries(object):
-    "Series of grid results"
+    """Series of grid results"""
 
     def __repr__(self):
         return ("<GridSeries %s | %s>" % (self.groupname, self.name))
