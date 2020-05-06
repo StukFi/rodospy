@@ -182,14 +182,17 @@ class RodosConnection(object):
         # create list of project classes
         projects = []
         for p in proj_dict:
-            # below does not work in Python3 ?
-            # https://stackoverflow.com/questions/54691491/how-is-the-less-than-operator-for-dictionaries-defined-in-python-2
-            #if filters.items() <= p.items():
-            #    projects.append(Project(self, p))
-            for key in filters.keys():
-                # 'casting' values to strings here, because it is not always clear if values are txt or integers
-                if key in filters.keys() and f'{p.get(key)}' == f'{filters[key]}':
-                    projects.append(Project(self, p))
+            if len(filters.keys()) == 0:
+                projects.append(Project(self, p))
+            else:
+                # below does not work in Python3 ?
+                # https://stackoverflow.com/questions/54691491/how-is-the-less-than-operator-for-dictionaries-defined-in-python-2
+                #if filters.items() <= p.items():
+                #    projects.append(Project(self, p))
+                for key in filters.keys():
+                    # 'casting' values to strings here, because it is not always clear if values are txt or integers
+                    if key in filters.keys() and f'{p.get(key)}' == f'{filters[key]}':
+                        projects.append(Project(self, p))
         return projects
 
     def get_npps(self):
@@ -279,16 +282,19 @@ class Project(object):
             self.load()
         tasks = []
         for t in self.details_dict["tasks"]:
-            # below does not work in Python3 ?
-            # https://stackoverflow.com/questions/54691491/how-is-the-less-than-operator-for-dictionaries-defined-in-python-2
-            # if filters.items()<=t.items():
-            #     tasks.append ( Task(self,t) )
-            for key in filters.keys():
-                # 'casting' values to strings here, because it is not always clear if values are txt or integers
-                data_items = t.get('dataitems')
-                for data_item in data_items:
-                    if key in data_item.keys() and f'{data_item.get(key)}' == f'{filters[key]}':
-                        tasks.append(Task(self, t))
+            if len(filters.keys()) == 0:
+                tasks.append(Project(self, t))
+            else:
+                # below does not work in Python3 ?
+                # https://stackoverflow.com/questions/54691491/how-is-the-less-than-operator-for-dictionaries-defined-in-python-2
+                # if filters.items()<=t.items():
+                #     tasks.append ( Task(self,t) )
+                for key in filters.keys():
+                    # 'casting' values to strings here, because it is not always clear if values are txt or integers
+                    data_items = t.get('dataitems')
+                    for data_item in data_items:
+                        if key in data_item.keys() and f'{data_item.get(key)}' == f'{filters[key]}':
+                            tasks.append(Task(self, t))
         return tasks
 
 class Task(object):
