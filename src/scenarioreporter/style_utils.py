@@ -6,26 +6,26 @@ class RangeCreator:
     """
 
     SLD_TEMPLATE = """<?xml version="1.0" ?>
-  <StyledLayerDescriptor>
-    <NamedLayer>
-      <Name>jrodoslayer</Name>
-      <UserStyle xmlns="http://www.opengis.net/sld">
-        <Name>Default Styler</Name>
-        <Title/>
-        <Abstract/>
-        <FeatureTypeStyle>
-          <Name>Value</Name>
-          <Title>title</Title>
-          <Abstract>abstract</Abstract>
-          <FeatureTypeName>Feature</FeatureTypeName>
-          <SemanticTypeIdentifier>generic:geometry</SemanticTypeIdentifier>
-          <!-- START rules -->
-          {rules}
-          <!-- END rules -->         
-        </FeatureTypeStyle>
-      </UserStyle>
-    </NamedLayer>
-  </StyledLayerDescriptor>"""
+<StyledLayerDescriptor>
+<NamedLayer>
+  <Name>jrodoslayer</Name>
+  <UserStyle xmlns="http://www.opengis.net/sld">
+    <Name>Default Styler</Name>
+    <Title/>
+    <Abstract/>
+    <FeatureTypeStyle>
+      <Name>Value</Name>
+      <Title>title</Title>
+      <Abstract>abstract</Abstract>
+      <FeatureTypeName>Feature</FeatureTypeName>
+      <SemanticTypeIdentifier>generic:geometry</SemanticTypeIdentifier>
+      <!-- START rules -->
+      {rules}
+      <!-- END rules -->         
+    </FeatureTypeStyle>
+  </UserStyle>
+</NamedLayer>
+</StyledLayerDescriptor>"""
 
     examples = """
       <Rule>
@@ -159,11 +159,17 @@ class RangeCreator:
         r = ()  # empty set
         if min_inf:
             r = (-float('inf'), math.floor(start)),
-        for i in range(math.floor(start), math.ceil(end), step):
-            s = i
-            e = i+step
+        # if step is an integer:
+        #for i in range(math.floor(start), math.ceil(end), step):
+        # but we also want to be able to use a float here:
+        stepsize = (end-start)/step
+        s = start
+        e = end
+        while s < end:
+            e = s+step
             #print '{} - {}'.format(s, e)
             r += (s, e),  # add s and e as tuple
+            s = s+step
         if max_inf:
             #r += (pow(10, end_exponent), float('inf')),
             r += (math.ceil(end), 1000000000000),
@@ -279,21 +285,26 @@ class RangeCreator:
         return RangeCreator.SLD_TEMPLATE.format(rules=''.join(rules))
 
     @staticmethod
-    def create_sld(start=0, end=24, min_inf=False, max_inf=False, step=2, start_hue=0, end_hue=0.6):
+    def create_sld(start=0, end=24, min_inf=False, max_inf=False, step=2.0, start_hue=0, end_hue=0.6):
         bounds = RangeCreator.create_range_set(start, end, min_inf, max_inf, step)
         colors = RangeCreator.full_cream_color_ramp2(len(bounds), start_hue, end_hue)
         rules = []
         for i in range(len(bounds)):
             #print(f'{colors[i]}, {bounds[i]})
             lower = bounds[i][0]
+            if lower == 0:
+                lower_string = '0'  # have to check this else we loose 0 or 0.0 ...
+            else:
+                lower_string = f'{lower:.3f}'.strip('0')
             upper = bounds[i][1]
+            upper_string = f'{upper:.3f}'.strip('0')
             rule = RangeCreator.SLD_RULE_TEMPLATE.format(
                 lower_boundary=lower,
                 upper_boundary=upper,
-                title=f'{lower} - {upper}',
-                abstract=f'{lower} - {upper}',
+                title=f'{lower_string} - {upper_string}',
+                abstract=f'{lower_string} - {upper_string}',
                 fill=colors[i])
-            rules.append(rule)
+            rules.insert(0, rule)
         return RangeCreator.SLD_TEMPLATE.format(rules=''.join(rules))
 
     @staticmethod
@@ -330,6 +341,9 @@ if __name__ == '__main__':
     #print(RangeCreator.create_rule_set())
     #print(RangeCreator.full_cream_color_ramp())
     #print(RangeCreator.create_log_sld(-1, 1, True, True))
-    print(RangeCreator.create_sld())
+    #print(RangeCreator.create_sld())
+    #print(RangeCreator.create_range_set(0, 23.833333, step=(23.833333/10)))
+    print(RangeCreator.create_sld(0, 23.833333, step=(23.833333/10)))
     #print(RangeCreator.create_sld(0.23, 8))
     #print(RangeCreator.create_sld(0.23, 8, step=3))
+
