@@ -11,11 +11,11 @@ class RangeCreator:
   <Name>jrodoslayer</Name>
   <UserStyle xmlns="http://www.opengis.net/sld">
     <Name>Default Styler</Name>
-    <Title/>
+    <Title>Custom Created SLD 1</Title>
     <Abstract/>
     <FeatureTypeStyle>
       <Name>Value</Name>
-      <Title>title</Title>
+      <Title>Custom Created SLD 2</Title>
       <Abstract>abstract</Abstract>
       <FeatureTypeName>Feature</FeatureTypeName>
       <SemanticTypeIdentifier>generic:geometry</SemanticTypeIdentifier>
@@ -267,7 +267,10 @@ class RangeCreator:
         return r
 
     @staticmethod
-    def create_log_sld(start_exponent=0, end_exponent=10, min_inf=False, max_inf=False, start_hue=0, end_hue=0.6):
+    def create_log_sld(start_exponent=0, end_exponent=None, min_inf=False, max_inf=False, start_hue=0, end_hue=0.6):
+        # default to 10 classes if end_exponent (or both start and end) are not given as parameters
+        if end_exponent is None:
+            end_exponent = start_exponent + 10
         bounds = RangeCreator.create_log_range_set(start_exponent, end_exponent, min_inf, max_inf)
         colors = RangeCreator.full_cream_color_ramp2(len(bounds), start_hue, end_hue)
         rules = []

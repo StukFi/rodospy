@@ -78,12 +78,25 @@ if len(projects) > 0:
     #     potential_dose_ingestion_lung = tasks[0].potential_dose_ingestion['lung']
     #     print(potential_dose_ingestion_lung.data_extent())
 
-    tasks = project.get_tasks({'datapath': 'Model data=;=Output=;=Prognostic Results=;=Cloud arrival time=;=Cloud arrival time'})
-    if len(tasks) > 0:
-        print(tasks[0].eta)
-        eta_cloud_arrival_time = tasks[0].eta['Cloud arrival time']
-        print(eta_cloud_arrival_time.data_extent())
+    # tasks = project.get_tasks({'datapath': 'Model data=;=Output=;=Prognostic Results=;=Cloud arrival time=;=Cloud arrival time'})
+    # if len(tasks) > 0:
+    #     print(tasks[0].eta)
+    #     eta_cloud_arrival_time = tasks[0].eta['Cloud arrival time']
+    #     print(eta_cloud_arrival_time.data_extent())
 
+    # Meteo
+    #  Model data=;=Output=;=Prognostic Results=;=Meteorological information=;=Total Precipitation
+    tasks = project.get_tasks({'datapath': 'Model data=;=Output=;=Prognostic Results=;=Meteorological information=;=Total Precipitation'})
+    if len(tasks) > 0:
+        # meteo["Total Precipitation"] [(3.393019909481154e-08, (53.2059650421143, 1.274460554122925), datetime.datetime(2019, 9, 1, 12, 0)), (12.81190013885498, (53.88722610473635, 8.981003522872928), datetime.datetime(2019, 9, 2, 8, 0))]
+        print(f'meteo["Total Precipitation"] { tasks[0].meteo["Total Precipitation"].data_extent() }')
+        print(f'meteo["Atmosferic Resistance"] { tasks[0].meteo["Atmosferic Resistance"].data_extent() }')
+        print(f'meteo["Cumulative Precipitation one timestep"] { tasks[0].meteo["Cumulative Precipitation one timestep"].data_extent() }')
+        print(f'meteo["Mixing layer height"] { tasks[0].meteo["Mixing layer height"].data_extent() }')
+
+        # Atmosferic Resistance
+        # Cumulative Precipitation one timestep
+        # Mixing layer height
     print('done')
 
 

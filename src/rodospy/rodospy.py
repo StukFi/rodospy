@@ -346,6 +346,7 @@ class Task(object):
         self.eta = {}
         self.potential_dose = {}
         self.potential_dose_ingestion = {}
+        self.meteo = {}
 
         # classify grid series to dictionaries
         # TODO: some items still missing (FDMT, Emersim, DEPOM etc.)
@@ -510,9 +511,11 @@ class Task(object):
                 self.potential_dose_ingestion[i.name] = i
             elif i.groupname == 'Eta' or i.groupname == 'Eta.Hemisphere':
                 self.eta[i.name] = i
+            elif i.groupname in ['AccRain', 'AtmResist', 'MixLayer', 'CumulRain']:
+                self.meteo[i.name] = i
             # TODO: handle all groupnames and names !!
-            # else:
-            #    print(f'group: {i.groupname} name: {i.name}')
+            else:
+               print(f'New groupname? group: {i.groupname} name: {i.name}')
 
 
 class GridSeries(object):

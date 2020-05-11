@@ -18,6 +18,7 @@ from rodospy import settings
 from datetime import datetime, timedelta
 import os
 import json
+import math
 
 from .. import models
 
@@ -186,6 +187,14 @@ def create_intro_text_item(request, editor, scenario):
 
 
 def create_map_item(request, editor, scenario, project, datapath, task_name):
+
+    should_create_sld_for_datapath = [
+      'Model data=;=Output=;=Prognostic Results=;=Cloud arrival time=;=Cloud arrival time',
+    ]
+    should_create_log_sld_for_datapath = [
+      'Model data=;=Output=;=Prognostic Results=;=Potential doses=;=Total potential dose=;=lung',  # the dose.sld sent with geopackage is wrong!
+    ]
+
     # now add one start item AND a map
     for task in project.tasks:
         # is gridserie.datapath unique per task or overall ????
@@ -236,22 +245,39 @@ def create_map_item(request, editor, scenario, project, datapath, task_name):
                             'prognosis_start': project.startOfPrognosis.isoformat(),
                             'prognosis_end': prognosis_end.isoformat(),
                             'timestep_period': 'PT{}{}'.format(project.timestepOfPrognosis, project.durationOfPronosisUnit.upper()), # 'PT3600S' or 'PT60M'
-                            #'sld_url': settings.rodospy_settings['wps']['sld_base_url']+'/'+scenario_dir+'/jrodos.sld',
                             'datapath': datapath   # extra info because datapath is ONLY unique key in tree
                            }
 
-                # check IF we received an sld file
-                # if so: fix it, so it can be use by mapserver
-                #        AND create a sld_url in the map_data object
-                if file_names['sld']:
+                # check IF we should create an sld OR if we received an sld file
+                new_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['sld_storage'], os.path.sep, scenario_dir, os.path.sep, 'jrodos.sld')
+                if datapath in should_create_sld_for_datapath or datapath in should_create_log_sld_for_datapath:
+                    # Create a sld, based on min and max value in Gridserie/dataset
+                    data_exent = gridserie.data_extent()  # determine min and max in dataset
+                    min = data_exent[0][0]
+                    max = data_exent[1][0]
+
+                    from ..style_utils import RangeCreator
+                    if datapath in should_create_sld_for_datapath:
+                        sld = RangeCreator.create_sld(0, max, step=(max/10))
+                    else:  # we should be able to create a logarithmic sld for this set:
+                        min_exp = math.floor(math.log10(min))
+                        sld = RangeCreator.create_log_sld(min_exp)
+                    f = open(new_sld, 'w')
+                    f.write(sld)
+                    f.close()
+                    # AND create a sld_url in the map_data/settings so it will be used
+                    map_data['sld_url'] = settings.rodospy_settings['wps']['sld_base_url']+'/'+scenario_dir+'/jrodos.sld'
+                elif file_names['sld']:
+                    # we received an (not in Mapserver working) sld, fix it, so it can be used
                     old_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['file_storage'], os.path.sep, scenario_dir, os.path.sep, file_names['sld'])
-                    new_sld = '{}{}{}{}{}'.format(settings.rodospy_settings['wps']['sld_storage'], os.path.sep, scenario_dir, os.path.sep, 'jrodos.sld')
                     fix_and_save_sld(old_sld, new_sld)
-                    # AND create a sld_url in th map_data/settings so it will be used
+                    # AND create a sld_url in the map_data/settings so it will be used
                     map_data['sld_url'] = settings.rodospy_settings['wps']['sld_base_url']+'/'+scenario_dir+'/jrodos.sld'
                 else:
-                    # TODO: create some sld ??
+                    # OK no sld received, and we do not know this datapath yet...
+                    # so NO SLD-param in mapserver requests (maps get the default style)
                     pass
+
                 map_item.data = json.dumps(map_data)
                 return map_item
 
