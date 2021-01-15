@@ -541,7 +541,7 @@ class GridSeries(object):
         polygon.addGeometry (ring )
         return polygon.Centroid()
 
-    def maxAtDistance(self,center_lon,center_lat,distance_in_km):
+    def valueAtDistance(self,center_lon,center_lat,distance_in_km):
         "get maximum value in the distance of X meters. Center must be given also."
         gis_data = gpkg_driver.Open(self.gpkg_file())
         layer = gis_data.GetLayer(2) # view
@@ -562,9 +562,25 @@ class GridSeries(object):
             if data_geom.Intersects ( ring ):
                 values.append( feature.GetField("Value") )
         if values==[]:
-            return None
+            return {"max": None,
+                    "average": None,
+                    "min": None,
+                    "median": None,
+                    "percentile_90": None,
+                    "percentile_95": None,
+                    "percentile_80": None
+                    }
         else:
-            return max(values)
+            V = n.asarray(values)
+            return {"max": n.amax(V),
+                    "average": n.average(V),
+                    "min": n.amin(V),
+                    "median": n.percentile(V,50),
+                    "percentile_90": n.percentile(V,90),
+                    "percentile_95": n.percentile(V,95),
+                    "percentile_80": n.percentile(V,80)
+                    }
+
 
     def save_as_shapefile(self,output_dir=None, file_prefix="out", timestamp=None):
         "Save as shape file. Can be used in map plotting etc"
