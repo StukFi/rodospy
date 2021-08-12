@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 from owslib.wps import WebProcessingService
-import osr
-import ogr
+try:
+    import osr
+    import ogr
+except ImportError:
+    from osgeo import osr
+    from osgeo import ogr
 import os
 from datetime import datetime, timedelta
 from urllib.request import Request
