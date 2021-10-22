@@ -227,7 +227,11 @@ class Project(object):
                 for key2 in details_dict[key]:
                     setattr(self,key2,details_dict[key][key2])
         # set source term nuclides as list
-        self.sourcetermNuclides = self.sourcetermNuclides.split(",")
+        try:
+            self.sourcetermNuclides = self.sourcetermNuclides.split(",")
+        except:
+            logger.debug( "Source term info is missuing" )
+            self.sourcetermNuclides = []
         for t in details_dict["tasks"]:
             self.tasks.append ( Task(self,t) )
 
@@ -314,6 +318,10 @@ class Task(object):
                 self.inhalation_dose[i.name] = i
             elif i.groupname=="skin.dose":
                 self.skin_dose[i.name] = i
+            elif i.groupname=="cloud.arrival.time":
+                self.cloud_arrival_time = i
+            elif i.groupname=="cloud.arrival.living.time":
+                self.cloud_leaving_time = i
             elif i.groupname=="total.dose.nuclide.specific":
                 try:
                     key = from_rodos_nuclide(i.name)
