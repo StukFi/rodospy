@@ -40,7 +40,8 @@ owslib_log.setLevel(logging.DEBUG)
 
 # GDAL constants
 wgs84_cs = osr.SpatialReference()
-wgs84_cs.ImportFromEPSG(4326)
+#wgs84_cs.ImportFromEPSG(4326)
+wgs84_cs.ImportFromProj4("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 gml_driver = ogr.GetDriverByName('GML')
 gpkg_driver = ogr.GetDriverByName('GPKG')
 shapefile_driver = ogr.GetDriverByName('ESRI Shapefile')
@@ -604,6 +605,9 @@ class GridSeries(object):
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         shapefile_path = "{}/{}.shp".format(
             output_dir,file_prefix)
+        # delete existing dataset
+        if os.path.exists(shapefile_path):
+            shapefile_driver.DeleteDataSource(shapefile_path)
         data_source = shapefile_driver.CreateDataSource( shapefile_path)
         srs = layer.GetSpatialRef()
         shapefile_layer = data_source.CreateLayer( "jrodosexport",wgs84_cs,ogr.wkbPolygon)
@@ -625,11 +629,4 @@ class GridSeries(object):
             shapefile_layer.CreateFeature( feature )
         data_source = None
         return shapefile_path
-
-
-
-
-
-
-
 
