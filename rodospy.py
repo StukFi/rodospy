@@ -612,9 +612,8 @@ class GridSeries(object):
         srs = layer.GetSpatialRef()
         shapefile_layer = data_source.CreateLayer( "jrodosexport",wgs84_cs,ogr.wkbPolygon)
         fields = ( 
-            ("fid", ogr.OFTInteger64),
             ("Cell", ogr.OFTInteger64),
-            ("Time", ogr.OFTInteger64),
+            ("Time", ogr.OFTInteger64), 
             ("Value", ogr.OFTReal)
         )
 
