@@ -368,7 +368,12 @@ class GridSeries(object):
     def get_filepath(self):
         "generate filepath if check if it does exists"
         if not os.path.isdir(self.output_dir):
-            self.save_gpkg()
+            if "Cloud" in self.datapath:
+                threshold = -1
+            else:
+                threshold = None
+            print ( threshold )
+            self.save_gpkg(None,True,threshold)
         return self.output_dir
     
     def gpkg_file(self):
@@ -387,8 +392,11 @@ class GridSeries(object):
                 break
         return self.get_filepath() + "/" + filename
     
-    def save_gpkg(self,output_dir=None,force=True):
+    def save_gpkg(self,output_dir=None,force=True,threshold=None):
         "Read and save GeoPackage file from WPS service"
+        if threshold==None:
+            # very small number to clip zeros in order to reduce the amount of data
+            threshold = 1e-15 
         if output_dir==None:
             output_dir = self.output_dir
         wps_input = [
@@ -400,7 +408,7 @@ class GridSeries(object):
                 ('columns', "0-"), # get the whole dataset
                 ('vertical', "0"), # TODO: think!
                 ('includeSLD', "1"),
-                ('threshold', "1e-15") # TODO: add threshold support
+                ('threshold', str(threshold)) 
             ]
         x = "{}".format(request_template)
         x = x.replace("TASKARG",wps_input[0][1])
