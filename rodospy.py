@@ -263,9 +263,13 @@ class Task(object):
                 setattr(self,key,tdict[key])
         self.dataitems_json = tdict["dataitems"] # use this for searchs?
         self.gridseries = []
+        self.vectorseries = []
         for d in tdict["dataitems"]:
             if d["dataitem_type"]=="GridSeries":
                 self.gridseries.append( GridSeries(self,d) )
+            # FIXME: gets first timestamp only
+            elif d["dataitem_type"]=="VectorGridSeries":
+                self.vectorseries.append( VectorGridSeries(self,d,0) )
         self.deposition = {}
         self.wet_deposition = {}
         self.dry_deposition = {}
@@ -278,6 +282,7 @@ class Task(object):
         self.ground_dose = {}
         self.inhalation_dose = {}
         self.skin_dose = {}
+        self.wind_field = {}
         
         # classify grid series to dictionaries
         # TODO: some items still missing (FDMT, Emersim, DEPOM etc.)
@@ -329,6 +334,10 @@ class Task(object):
                 except IndexError: # not nuclide 
                     key = i.name
                 self.total_dose[key] = i
+        # classify also vector data
+        for i in self.vectorseries:
+            if i.groupname=="WindFields_WindFields":
+                self.wind_field = i
 
 class GridSeries(object):
     "Series of grid results"
@@ -406,6 +415,8 @@ class GridSeries(object):
                 ('includeSLD', "1")
             ]
         if threshold!=None:
+            wps_input.append ( ('threshold', str(threshold) ) )
+        else:
             wps_input.append ( ('threshold', str(threshold) ) )
         x = "{}".format(request_template)
         x = x.replace("TASKARG",wps_input[0][1])
@@ -634,3 +645,92 @@ class GridSeries(object):
         data_source = None
         return shapefile_path
 
+class VectorGridSeries(object):
+    "Series of vector grid results"
+    # TODO: This is workaround only
+    # Time series not supported in WPS request??
+    def __repr__(self):
+        return ("<VectorGridSeries %s | %s>" % (self.groupname, self.name))
+
+    def __init__(self,task,ddict,time_index=0):
+        self.task = task
+        self.project = task.project
+        self.rodos = task.rodos
+        self.gpkgfile = None
+        self.time_index = time_index
+        for key in ddict:
+            setattr(self,key,ddict[key])
+        self.output_dir = "{}/{}/{}/{}".format(self.rodos.storage,
+                                               self.task.project.name,
+                                               self.task.project.modelchainname,
+                                               self.datapath.replace(" ","_"))
+
+    def get_filepath(self):
+        "generate filepath if check if it does exists"
+        if not os.path.isdir(self.output_dir):
+            threshold = 1e-15
+            self.save_gpkg(None,True,threshold)
+        return self.output_dir
+    
+    def gpkg_file(self):
+        "get full path of gpkg file"
+        filelist = os.listdir( self.get_filepath() ) 
+        for filename in filelist:
+            if filename.split(".")[-1]=="gpkg":
+                break
+        return self.get_filepath() + "/" + filename
+
+    def sld_file(self):
+        "get full path of sld file"
+        filelist = os.listdir( self.get_filepath() ) 
+        for filename in filelist:
+            if filename.split(".")[-1]=="sld":
+                break
+        return self.get_filepath() + "/" + filename
+    
+    def save_gpkg(self,output_dir=None,force=True,threshold=None):
+        "Read and save GeoPackage file from WPS service"
+        if output_dir==None:
+            output_dir = self.output_dir
+        wps_input = [
+                ('taskArg', 
+                 "project='{}'&amp;model='{}'".format(self.task.project.name,\
+                                                      self.task.modelwrappername)),
+                ('dataitem',
+                 "path='%s'" % self.datapath),
+                ('columns', str(self.time_index) ), # FIXME: only one timestamp supported
+                ('vertical', "0"), # surface only
+                ('includeSLD', "1")
+            ]
+        print ( wps_input )
+        if threshold!=None:
+            wps_input.append ( ('threshold', str(threshold) ) )
+        else:
+            wps_input.append ( ('threshold', str(threshold) ) )
+        x = "{}".format(request_template)
+        x = x.replace("TASKARG",wps_input[0][1])
+        x = x.replace("DATAITEM",wps_input[1][1])
+        x = x.replace("COLUMNS",wps_input[2][1])
+        x = x.replace("THRESHOLD",wps_input[5][1])
+        req = Request ( self.rodos.w["url"],
+                        data = x.encode(), 
+                        headers = xml_headers)
+        logger.debug ( "Execute WPS with values %s" % (str(wps_input)) )
+        response = urlopen( req )
+        temp = tempfile.NamedTemporaryFile() #2
+        try:
+            resp_file = open(temp.name, "wb")
+            resp_file.write( response.read() )
+            resp_file.close()
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            try:
+                with zipfile.ZipFile(temp.name, 'r') as zip_ref:
+                    zip_ref.extractall(output_dir)
+            except zipfile.BadZipFile:
+                logger.error ( "Something went wrong" )
+                os.rmdir ( output_dir )
+                raise RodosPyException ( open(temp.name).read()  )
+        finally:
+            temp.close() 
+        self.filepath = output_dir
+        return self.filepath
