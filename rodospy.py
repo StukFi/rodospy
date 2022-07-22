@@ -212,7 +212,7 @@ class Project(object):
         # load details only when necessary
         self.details_dict = None
 
-    def load(self):
+    def load(self,vector_t_indices,vector_z_indices):
         """Load project metadata"""
         # request project details from rest service
         response = urlopen( self.rodos.rest_url + "/projects/{:d}".format(
@@ -234,18 +234,17 @@ class Project(object):
             logger.debug( "Source term info is missuing" )
             self.sourcetermNuclides = []
         for t in details_dict["tasks"]:
-            self.tasks.append ( Task(self,t) )
+            self.tasks.append ( Task(self,t,vector_t_indices,vector_z_indices) )
 
-    def get_tasks(self, filters={}):
+    def get_tasks(self, filters={},vector_t_indices=0,vector_z_indices=0):
         "Get tasks and filter by dictionary."
         if self.details_dict==None:
-            self.load()
+            self.load(vector_t_indices,vector_z_indices)
         tasks = []
         for t in self.details_dict["tasks"]:
             if filters.items()<=t.items():
-                tasks.append ( Task(self,t) )
+                tasks.append ( Task(self,t,vector_t_indices,vector_z_indices) )
         return tasks
-        
 
 class Task(object):
     """
@@ -254,7 +253,7 @@ class Task(object):
     def __repr__(self):
         return ("<Task %s | %s>" % (self.modelwrappername, self.description))
 
-    def __init__(self,project,tdict):
+    def __init__(self,project,tdict,vector_t_indices=0,vector_z_indices=0):
         self.rodos = project.rodos
         self.project = project
         self.dataitems = []
@@ -267,9 +266,13 @@ class Task(object):
         for d in tdict["dataitems"]:
             if d["dataitem_type"]=="GridSeries":
                 self.gridseries.append( GridSeries(self,d) )
-            # FIXME: gets first timestamp only
             elif d["dataitem_type"]=="VectorGridSeries":
-                self.vectorseries.append( VectorGridSeries(self,d,0) )
+                for t_index in range(vector_t_indices):
+                    for z_index in range(vector_z_indices):
+                        self.vectorseries.append( VectorGridSeries(self,
+                                                                   d,
+                                                                   t_index,
+                                                                   z_index) )
         self.deposition = {}
         self.wet_deposition = {}
         self.dry_deposition = {}
@@ -335,9 +338,10 @@ class Task(object):
                     key = i.name
                 self.total_dose[key] = i
         # classify also vector data
+        # TODO: add soma more
         for i in self.vectorseries:
             if i.groupname=="WindFields_WindFields":
-                self.wind_field = i
+                self.wind_field["{}_{}".format(i.time_index,i.z_index)] = i
 
 class GridSeries(object):
     "Series of grid results"
@@ -648,22 +652,26 @@ class GridSeries(object):
 class VectorGridSeries(object):
     "Series of vector grid results"
     # TODO: This is workaround only
-    # Time series not supported in WPS request??
-    def __repr__(self):
-        return ("<VectorGridSeries %s | %s>" % (self.groupname, self.name))
 
-    def __init__(self,task,ddict,time_index=0):
+    def __init__(self,task,ddict,time_index=0,z_index=0):
         self.task = task
         self.project = task.project
         self.rodos = task.rodos
         self.gpkgfile = None
         self.time_index = time_index
+        self.z_index  = z_index
         for key in ddict:
             setattr(self,key,ddict[key])
         self.output_dir = "{}/{}/{}/{}".format(self.rodos.storage,
                                                self.task.project.name,
                                                self.task.project.modelchainname,
                                                self.datapath.replace(" ","_"))
+
+    def __repr__(self):
+        return ("<VectorGridSeries %s | %s t: %i, z: %i>" % (self.groupname, 
+                                                             self.name,
+                                                             self.t_index,
+                                                             self.z_index))
 
     def get_filepath(self):
         "generate filepath if check if it does exists"
@@ -698,8 +706,8 @@ class VectorGridSeries(object):
                                                       self.task.modelwrappername)),
                 ('dataitem',
                  "path='%s'" % self.datapath),
-                ('columns', str(self.time_index) ), # FIXME: only one timestamp supported
-                ('vertical', "0"), # surface only
+                ('columns', str(self.time_index) ),
+                ('vertical', str(self.z_index)),
                 ('includeSLD', "1")
             ]
         print ( wps_input )
