@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 from owslib.wps import WebProcessingService
 try:
     import osr
@@ -335,8 +335,11 @@ class Task(object):
                 try:
                     key = from_rodos_nuclide(i.name)
                 except IndexError: # not nuclide 
-                    key = i.name
+                    #key = i.name
+                    pass
                 self.total_dose[key] = i
+            elif i.groupname=="Environmental_Uniform_Landuse":
+                self.land_use = i
         # classify also vector data
         # TODO: add soma more
         for i in self.vectorseries:
@@ -378,23 +381,26 @@ class GridSeries(object):
         "TODO"
         return []
 
-    def get_filepath(self):
-        "generate filepath if check if it does exists"
+    def get_filepath(self,time_columns="0-"):
+        """"
+        Generate filepath if check if it does exists
+        By default all the timestamps are extracted 
+        """
         if not os.path.isdir(self.output_dir):
-            if "Cloud" in self.datapath:
+            if ("Cloud arriv" in self.datapath or "Cloud lea" in self.datapath):
                 threshold = -1
             else:
                 threshold = 1e-15
-            self.save_gpkg(None,True,threshold)
+            self.save_gpkg(None,True,threshold,time_columns)
         return self.output_dir
     
-    def gpkg_file(self):
+    def gpkg_file(self,time_columns="0-"):
         "get full path of gpkg file"
-        filelist = os.listdir( self.get_filepath() ) 
+        filelist = os.listdir( self.get_filepath(time_columns) ) 
         for filename in filelist:
             if filename.split(".")[-1]=="gpkg":
                 break
-        return self.get_filepath() + "/" + filename
+        return self.get_filepath(time_columns) + "/" + filename
 
     def sld_file(self):
         "get full path of sld file"
@@ -404,7 +410,7 @@ class GridSeries(object):
                 break
         return self.get_filepath() + "/" + filename
     
-    def save_gpkg(self,output_dir=None,force=True,threshold=None):
+    def save_gpkg(self,output_dir=None,force=True,threshold=None,time_columns="0-"):
         "Read and save GeoPackage file from WPS service"
         if output_dir==None:
             output_dir = self.output_dir
@@ -414,7 +420,7 @@ class GridSeries(object):
                                                       self.task.modelwrappername)),
                 ('dataitem',
                  "path='%s'" % self.datapath),
-                ('columns', "0-"), # get the whole dataset
+                ('columns', time_columns), 
                 ('vertical', "0"), # TODO: think!
                 ('includeSLD', "1")
             ]
@@ -710,7 +716,6 @@ class VectorGridSeries(object):
                 ('vertical', str(self.z_index)),
                 ('includeSLD', "1")
             ]
-        print ( wps_input )
         if threshold!=None:
             wps_input.append ( ('threshold', str(threshold) ) )
         else:
