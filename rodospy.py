@@ -342,6 +342,8 @@ class Task(object):
                 self.land_use = i
             elif i.groupname=="MPPtoADM_istabG":
                 self.stability_class = i
+            elif i.groupname=="Environmental_Region":
+                self.region = i
         # classify also vector data
         # TODO: add soma more
         for i in self.vectorseries:
