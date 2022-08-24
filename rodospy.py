@@ -1,11 +1,11 @@
 
 from owslib.wps import WebProcessingService
 try:
-    import osr
     import ogr
+    import osr
 except ImportError:
-    from osgeo import osr
     from osgeo import ogr
+    from osgeo import osr
 import os
 from datetime import datetime, timedelta
 from urllib.request import Request
@@ -340,6 +340,8 @@ class Task(object):
                 self.total_dose[key] = i
             elif i.groupname=="Environmental_Uniform_Landuse":
                 self.land_use = i
+            elif i.groupname=="MPPtoADM_istabG":
+                self.stability_class = i
         # classify also vector data
         # TODO: add soma more
         for i in self.vectorseries:
