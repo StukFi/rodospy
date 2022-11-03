@@ -10,6 +10,7 @@ Author: Tuomas Peltonen <tuomas.peltonen@stuk.fi>
 * Numpy https://numpy.org
 * GDAL https://pypi.python.org/pypi/GDAL/
 * python-dateutil
+* python-slugify
 
 Optionally matplotlib and matplotlib basemap that are used in plotting examples.
 

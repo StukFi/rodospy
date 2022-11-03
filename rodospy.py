@@ -15,6 +15,7 @@ import codecs
 import tempfile
 import zipfile
 from dateutil.parser import parse
+from slugify import slugify
 from xml.etree.ElementTree import XML, fromstring, tostring
 from pathlib import Path
 import numpy as n
@@ -365,9 +366,9 @@ class GridSeries(object):
         for key in ddict:
             setattr(self,key,ddict[key])
         self.output_dir = "{}/{}/{}/{}".format(self.rodos.storage,
-                                               self.task.project.name,
-                                               self.task.project.modelchainname,
-                                               self.datapath.replace(" ","_"))
+                                               slugify(self.task.project.name),
+                                               slugify(self.task.project.modelchainname),
+                                               slugify(self.datapath))
 
     def times(self):
         "Read timestamps of data"
@@ -675,9 +676,9 @@ class VectorGridSeries(object):
         for key in ddict:
             setattr(self,key,ddict[key])
         self.output_dir = "{}/{}/{}/{}".format(self.rodos.storage,
-                                               self.task.project.name,
-                                               self.task.project.modelchainname,
-                                               self.datapath.replace(" ","_"))
+                                               slugify(self.task.project.name),
+                                               slugify(self.task.project.modelchainname),
+                                               slugify(self.datapath))
 
     def __repr__(self):
         return ("<VectorGridSeries %s | %s t: %i, z: %i>" % (self.groupname, 
