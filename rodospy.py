@@ -1,4 +1,3 @@
-
 from owslib.wps import WebProcessingService
 try:
     import ogr
@@ -365,8 +364,9 @@ class GridSeries(object):
         self.gpkgfile = None
         for key in ddict:
             setattr(self,key,ddict[key])
-        self.output_dir = "{}/{}/{}/{}".format(self.rodos.storage,
+        self.output_dir = "{}/{}{}/{}/{}".format(self.rodos.storage,
                                                slugify(self.task.project.name),
+                                               slugify(str(task.project.dateTimeModified)),
                                                slugify(self.task.project.modelchainname),
                                                slugify(self.datapath))
 
@@ -675,8 +675,9 @@ class VectorGridSeries(object):
         self.z_index  = z_index
         for key in ddict:
             setattr(self,key,ddict[key])
-        self.output_dir = "{}/{}/{}/{}".format(self.rodos.storage,
+        self.output_dir = "{}/{}{}/{}/{}".format(self.rodos.storage,
                                                slugify(self.task.project.name),
+                                               slugify(str(task.project.dateTimeModified)),
                                                slugify(self.task.project.modelchainname),
                                                slugify(self.datapath))
 
