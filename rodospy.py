@@ -130,8 +130,11 @@ def from_rodos_nuclide(nuclide):
 
 class RodosPyException(Exception):
     "Module specific exception"
-    def __init(self,message):
-        raise NameError ( message )
+    def __init__(self,message):
+        self.message = message
+
+    def __repr__(self):
+        return self.message
 
 class RodosConnection(object):
     """
@@ -292,7 +295,7 @@ class Task(object):
         for i in self.gridseries:
             try:
                 i.nuclide = from_rodos_nuclide(i.name)
-            except IndexError: # not nuclide dependent
+            except (IndexError,AttributeError) as error: # not nuclide dependent
                 i.nuclide = None
             if i.groupname=="ground.contamination":
                 self.deposition[i.nuclide] = i
@@ -334,8 +337,7 @@ class Task(object):
             elif i.groupname=="total.dose.nuclide.specific":
                 try:
                     key = from_rodos_nuclide(i.name)
-                except IndexError: # not nuclide 
-                    #key = i.name
+                except (IndexError,AttributeError) as error: # not nuclide 
                     pass
                 self.total_dose[key] = i
             elif i.groupname=="Environmental_Uniform_Landuse":
@@ -386,7 +388,7 @@ class GridSeries(object):
         return []
 
     def get_filepath(self,time_columns="0-"):
-        """"
+        """
         Generate filepath if check if it does exists
         By default all the timestamps are extracted 
         """
