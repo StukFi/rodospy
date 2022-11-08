@@ -382,7 +382,7 @@ class GridSeries(object):
                 times.append(time_value)
         times.sort()
         # convert epoch times to datetime objects
-        return list(map(datetime.fromtimestamp,times))
+        return list(map(datetime.utcfromtimestamp,times))
 
     def levels(self):
         "TODO"
@@ -498,7 +498,7 @@ class GridSeries(object):
         else:
             lon,lat = None, None
         if max_value>0:
-            timestamp = datetime.fromtimestamp(timestamp)
+            timestamp = datetime.utcfromtimestamp(timestamp)
         return (max_value,(lon,lat),timestamp)
 
     def areaExceeding(self,value,time_value):
@@ -545,7 +545,7 @@ class GridSeries(object):
         for key in sorted(values.keys()):
             x.append(key)
             y.append(values[key])
-        return {"times": list(map(datetime.fromtimestamp,x)), 
+        return {"times": list(map(datetime.utcfromtimestamp,x)), 
                 "values": y, 
                 "unit": self.unit, 
                 "title": "{} at point ({},{})".format(self.name,
