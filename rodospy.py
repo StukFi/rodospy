@@ -46,6 +46,43 @@ gml_driver = ogr.GetDriverByName('GML')
 gpkg_driver = ogr.GetDriverByName('GPKG')
 shapefile_driver = ogr.GetDriverByName('ESRI Shapefile')
 
+# JRODOS metadata
+feedstuff = {
+    "fhyi": "Hay I", 
+    "fgri": "Grass I",
+    # TODO: add the rest of the feedstuffs 
+}
+foodstuff = {
+    "fmil": "Cow milk", 
+    "fvel": "Leafy vegetables",
+    # TODO: add the rest of the foodstuffs 
+}
+organ = {
+    "oeff": "effective dose",
+    "othr": "thyroid"
+    # TODO: rest of the organs
+}
+
+nuclide_groups = {
+    "nces": "cesium isotopes",
+    "niod": "iodine isotopes",
+    # TODO: sr, alpha
+}
+dose_nuclides = {
+    "fsum": "all nuclides"
+}
+ages = {
+    "aadu": "adult",
+    "ac01": "child 1y"
+}
+inttimes = {
+    "t01y": "1y",
+    "tlif": "lifetime",
+    "Time": "time dependent"
+}
+
+
+
 request_template = """<?xml version="1.0" encoding="UTF-8"?>
         <wps:Execute version="1.0.0" service="WPS" 
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -276,82 +313,175 @@ class Task(object):
                                                                    d,
                                                                    t_index,
                                                                    z_index) )
-        self.deposition = {}
-        self.wet_deposition = {}
-        self.dry_deposition = {}
-        self.air_concentration = {}
-        self.time_integrated_air_concentration = {}
-        self.total_deposition = {}
-        self.ground_gamma_dose_rate = {}
-        self.total_dose = {}
-        self.cloud_dose = {}
-        self.ground_dose = {}
-        self.inhalation_dose = {}
-        self.skin_dose = {}
-        self.wind_field = {}
-        
-        # classify grid series to dictionaries
-        # TODO: some items still missing (FDMT, Emersim, DEPOM etc.)
-        for i in self.gridseries:
-            try:
-                i.nuclide = from_rodos_nuclide(i.name)
-            except (IndexError,AttributeError) as error: # not nuclide dependent
-                i.nuclide = None
-            if i.groupname=="ground.contamination":
-                self.deposition[i.nuclide] = i
-            elif i.groupname=="ground.contamination.wet":
-                self.wet_deposition[i.nuclide] = i
-            elif i.groupname=="ground.contamination.dry":
-                self.dry_deposition[i.nuclide] = i
-            elif i.groupname=="air.concentration.near.ground.surface":
-                self.air_concentration[i.nuclide] = i
-            elif i.groupname==\
-                "air.concentration.time.integrated.near.ground.surface":
-                self.time_integrated_air_concentration[i.nuclide] = i
-            elif i.groupname=="air.concentration.instantaneous.exceeded":
-                self.concentration_exceeded = i
-            elif i.groupname=="Graphical_Aerosol":
-                self.total_deposition["aerosol"] = i
-            elif i.groupname=="Graphical_Iodine":
-                self.total_deposition["iodine"] = i
-            elif i.groupname=="total.gamma.dose.rate":
-                self.total_gamma_dose_rate = i
-            elif i.groupname=="DOSRCL":
-                self.cloud_total_gamma_dose_rate = i
-            elif i.groupname=="DRNUGR":
-                self.ground_gamma_dose_rate[i.nuclide] = i
-            elif i.groupname=="total.dose":
-                self.total_dose[i.name] = i
-            elif i.groupname=="cloud.dose":
-                self.cloud_dose[i.name] = i
-            elif i.groupname=="ground.dose":
-                self.ground_dose[i.name] = i
-            elif i.groupname=="inhalation.dose":
-                self.inhalation_dose[i.name] = i
-            elif i.groupname=="skin.dose":
-                self.skin_dose[i.name] = i
-            elif i.groupname=="cloud.arrival.time":
-                self.cloud_arrival_time = i
-            elif i.groupname=="cloud.arrival.living.time":
-                self.cloud_leaving_time = i
-            elif i.groupname=="total.dose.nuclide.specific":
-                try:
-                    key = from_rodos_nuclide(i.name)
-                except (IndexError,AttributeError) as error: # not nuclide 
-                    pass
-                self.total_dose[key] = i
-            elif i.groupname=="Environmental_Uniform_Landuse":
-                self.land_use = i
-            elif i.groupname=="MPPtoADM_istabG":
-                self.stability_class = i
-            elif i.groupname=="Environmental_Region":
-                self.region = i
-        # classify also vector data
-        # TODO: add soma more
-        for i in self.vectorseries:
-            if i.groupname=="WindFields_WindFields":
-                self.wind_field["{}_{}".format(i.time_index,i.z_index)] = i
 
+        # Supported models are Emergency, LSMC and FDMT
+
+        if self.modelwrappername in ("LSMC","Emergency"):
+            self.deposition = {}
+            self.wet_deposition = {}
+            self.dry_deposition = {}
+            self.air_concentration = {}
+            self.time_integrated_air_concentration = {}
+            self.total_deposition = {}
+            self.ground_gamma_dose_rate = {}
+            self.total_dose = {}
+            self.cloud_dose = {}
+            self.ground_dose = {}
+            self.inhalation_dose = {}
+            self.skin_dose = {}
+            self.wind_field = {}
+            
+            # classify grid series to dictionaries
+            for i in self.gridseries:
+                try:
+                    i.nuclide = from_rodos_nuclide(i.name)
+                except (IndexError,AttributeError) as error: # not nuclide dependent
+                    i.nuclide = None
+                if i.groupname=="ground.contamination":
+                    self.deposition[i.nuclide] = i
+                elif i.groupname=="ground.contamination.wet":
+                    self.wet_deposition[i.nuclide] = i
+                elif i.groupname=="ground.contamination.dry":
+                    self.dry_deposition[i.nuclide] = i
+                elif i.groupname=="air.concentration.near.ground.surface":
+                    self.air_concentration[i.nuclide] = i
+                elif i.groupname==\
+                    "air.concentration.time.integrated.near.ground.surface":
+                    self.time_integrated_air_concentration[i.nuclide] = i
+                elif i.groupname=="air.concentration.instantaneous.exceeded":
+                    self.concentration_exceeded = i
+                elif i.groupname=="Graphical_Aerosol":
+                    self.total_deposition["aerosol"] = i
+                elif i.groupname=="Graphical_Iodine":
+                    self.total_deposition["iodine"] = i
+                elif i.groupname=="total.gamma.dose.rate":
+                    self.total_gamma_dose_rate = i
+                elif i.groupname=="DOSRCL":
+                    self.cloud_total_gamma_dose_rate = i
+                elif i.groupname=="DRNUGR":
+                    self.ground_gamma_dose_rate[i.nuclide] = i
+                elif i.groupname=="total.dose":
+                    self.total_dose[i.name] = i
+                elif i.groupname=="cloud.dose":
+                    self.cloud_dose[i.name] = i
+                elif i.groupname=="ground.dose":
+                    self.ground_dose[i.name] = i
+                elif i.groupname=="inhalation.dose":
+                    self.inhalation_dose[i.name] = i
+                elif i.groupname=="skin.dose":
+                    self.skin_dose[i.name] = i
+                elif i.groupname=="cloud.arrival.time":
+                    self.cloud_arrival_time = i
+                elif i.groupname=="cloud.arrival.living.time":
+                    self.cloud_leaving_time = i
+                elif i.groupname=="total.dose.nuclide.specific":
+                    try:
+                        key = from_rodos_nuclide(i.name)
+                    except (IndexError,AttributeError) as error: # not nuclide 
+                        pass
+                    self.total_dose[key] = i
+                elif i.groupname=="Environmental_Uniform_Landuse":
+                    self.land_use = i
+                elif i.groupname=="MPPtoADM_istabG":
+                    self.stability_class = i
+                elif i.groupname=="Environmental_Region":
+                    self.region = i
+            # classify also vector data
+            # TODO: add soma more
+            for i in self.vectorseries:
+                if i.groupname=="WindFields_WindFields":
+                    self.wind_field["{}_{}".format(i.time_index,i.z_index)] = i
+
+        # food chain related
+        if self.modelwrappername in ("FDMT","Emergency"):
+            self.feedstuff_activity = {}
+            self.foodstuff_activity = {}
+            self.longer_term_dose_ground = {}
+            self.longer_term_dose_ingestion = {}
+            self.longer_term_dose_inhalation = {}
+            self.longer_term_dose_total = {}
+            # re
+            for i in self.gridseries:
+                datapath = i.datapath.split("=;=")
+                try:
+                    dataitem = datapath[4]
+                    tree = datapath[-1].split("._")
+                    tree_str = tree[0].split(".")[-1][:4]
+                    nuc_str = tree[2].split(".")[-1][:4]
+                except IndexError:
+                    dataitem = None
+                # feedstuff 
+                if dataitem=="Feedstuff activities":
+                    f = feedstuff[tree_str]
+                    if not f in  self.feedstuff_activity:
+                        self.feedstuff_activity[f] = {}
+                    if "pro" in tree[1]:
+                        p = "processed"
+                    else:
+                        p = "raw products"
+                    if not p in  self.feedstuff_activity[f]:
+                        self.feedstuff_activity[f][p] = {}
+                    n = nuclide_groups[nuc_str]
+                    if not n in  self.feedstuff_activity[f][p]:
+                        self.feedstuff_activity[f][p][n] = {}
+                    t = "potential" # no other options available via jrodos?
+                    if not t in  self.feedstuff_activity[f][p][n]:
+                        self.feedstuff_activity[f][p][n][t] = {}
+                    if "tmax" in tree[4]:
+                        m = "max values"
+                    else:
+                        m = "time dependence"
+                        # TODO: Time dependent results "on hold" until the WPS
+                        # service is fixed
+                        continue
+                    self.feedstuff_activity[f][p][n][t][m] = i
+                # foodstuff (very similar to feedstuff)
+                elif dataitem=="Foodstuff activities":
+                    f = foodstuff[tree_str]
+                    if not f in  self.foodstuff_activity:
+                        self.foodstuff_activity[f] = {}
+                    if "pro" in tree[1]:
+                        p = "processed"
+                    else:
+                        p = "raw products"
+                    if not p in  self.foodstuff_activity[f]:
+                        self.foodstuff_activity[f][p] = {}
+                    n = nuclide_groups[nuc_str]
+                    if not n in  self.foodstuff_activity[f][p]:
+                        self.foodstuff_activity[f][p][n] = {}
+                    t = "potential" # no other options available via jrodos?
+                    if not t in  self.foodstuff_activity[f][p][n]:
+                        self.foodstuff_activity[f][p][n][t] = {}
+                    if "tmax" in tree[4]:
+                        m = "max values"
+                    else:
+                        m = "time dependence"
+                        # TODO: Time dependent results "on hold" until the WPS
+                        # service is fixed
+                        continue
+                    self.foodstuff_activity[f][p][n][t][m] = i
+                elif dataitem=="Ingestion dose":
+                    print ( datapath )
+                    o = organ[tree_str]
+                    if not o in  self.longer_term_dose_inhalation:
+                        self.longer_term_dose_inhalation[o] = {}
+                    if "pro" in tree[1]:
+                        p = "processed"
+                    else:
+                        p = "raw products"
+                    if not p in self.longer_term_dose_inhalation[o]:
+                        self.longer_term_dose_inhalation[o][p] = {}
+                    n = dose_nuclides[nuc_str]
+                    if not n in self.longer_term_dose_inhalation[o][p]:
+                        self.longer_term_dose_inhalation[o][p][n] = {}
+                    age_str = tree[4].split(".")[-1][:4]
+                    a = ages[age_str]
+                    if not a in self.longer_term_dose_inhalation[o][p][n]:
+                        self.longer_term_dose_inhalation[o][p][n][a] = {}
+                    it_str =  tree[5].split(".")[-1][:4]
+                    it = inttimes[it_str]
+                    self.longer_term_dose_inhalation[o][p][n][a][it] = i
+                    
 class GridSeries(object):
     "Series of grid results"
     def __repr__(self):
@@ -475,6 +605,7 @@ class GridSeries(object):
         Get max value and its lon/lat location
         Filter by time value is supported.
         """
+        # TODO: return None time in the case of non time-dependent dataitem
         gis_data = gpkg_driver.Open(self.gpkg_file())
         layer = gis_data.GetLayer(2) # view
         if time_value!=None:
