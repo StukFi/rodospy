@@ -48,40 +48,152 @@ shapefile_driver = ogr.GetDriverByName('ESRI Shapefile')
 
 # JRODOS metadata
 feedstuff = {
-    "fhyi": "Hay I", 
-    "fgri": "Grass I",
-    # TODO: add the rest of the feedstuffs 
+    "fbel": "Beet leaves",
+    "fbet": "Beet",
+    "fbrr": "Brewing residues",
+    "fmil": "Cow milk",
+    "fdir": "Distilling residues",
+    "fgre": "Grass extensive",
+    "fgri": "Grass intensive",
+    "fhye": "Hay extensive", 
+    "fhyi": "Hay intensive", 
+    "fmab": "Maize bulbs",
+    "fmai": "Maize",
+    "fmsu": "Milk substitute",
+    "foat": "Oats",
+    "fpot": "Potatoes",
+    "frye": "Rye",
+    "fsmm": "Skim milk",
+    "fsba": "Spring barley",
+    "fswh": "Spring wheat",
+    "fwha": "Whey (acid)",
+    "fwhr": "Whey (rennit)",
+    "fwba": "Winter barley",
+    "fwwh": "Winter wheat"
 }
+
 foodstuff = {
+    "fbeb": "Beef (bull)",
+    "fbec": "Beef (cow)",
+    "fbee": "Beer",
+    "fber": "Berries",
+    "fbut": "Butter",
+    "fcha": "Cheese (acid)",
+    "fchr": "Cheese (ren.)",
+    "fchi": "Chicken",
+    "fcom": "Condensed milk",
     "fmil": "Cow milk", 
+    "fcre": "Cream",
+    "fegg": "Eggs",
+    "fvef": "Fruit vegetables",
+    "ffru": "Fruits",
+    "fmig": "Goat milk",
+    "flam": "Lamb",
     "fvel": "Leafy vegetables",
-    # TODO: add the rest of the foodstuffs 
+    "foat": "Oats",
+    "fpor": "Pork",
+    "fpot": "Potatoes",
+    "fric": "Rice cool",
+    "frih": "Rice hot",
+    "fver": "Root vegetables",
+    "fryb": "Rye bran",
+    "fryf": "Rye flour",
+    "fryw": "Rye whole",
+    "frye": "Rye",
+    "fmis": "Sheep milk",
+    "fsba" : "Spring barley",
+    "fswb" : "Spring wheat bran",
+    "fsww" : "Spring wheat whole",
+    "fswf" : "Spring wheat flour",
+    "fswh" : "Spring wheat",
+    "fvea": "Veal",
+    "fwba" : "Winter barley",
+    "fwwb" : "Winter wheat bran",
+    "fwww" : "Winter wheat whole",
+    "fwwf" : "Winter wheat flour",
+    "fwwh" : "Winter wheat"
 }
+dose_foodstuff = foodstuff.copy()
+dose_foodstuff["fsum"] = "all products (sum)"
 organ = {
+    "obos": "bone surface",
+    "obre": "breast",
+    "ocol": "colon",
     "oeff": "effective dose",
-    "othr": "thyroid"
-    # TODO: rest of the organs
+    "oliv": "liver",
+    "olun": "lungs",
+    "opan": "pancreas",
+    "orbm": "red bone marrow",
+    "oski": "skin",
+    "osto": "stomach",
+    "othr": "thyroid",
+    "oute": "uterus"
 }
 
 nuclide_groups = {
     "nces": "cesium isotopes",
     "niod": "iodine isotopes",
-    # TODO: sr, alpha
+    "nstr": "strontium isotopes",
+    "nalp": "alpha isotopes",
+    "nbam": "Ba-137m",
+    "nba0": "Ba-140",
+    "ncm4": "Cm-242",
+    "ncm4": "Cm-244",
+    "ncs4": "Cs-134",
+    "ncs4": "Cs-136",
+    "ncs7": "Cs-137",
+    "nii1": "I-131",
+    "nii2": "I-132",
+    "nii3": "I-133",
+    "nii5": "I-135",
+    "nkrm": "Kr-85m",
+    "nkr5": "Kr-85",
+    "nkr8": "Kr-88",
+    "nla0": "La-140",
+    "npu8": "Pu-238",
+    "npu1": "Pu-241",
+    "nrb8": "Rb-88",
+    "nrh6": "Rh-106",
+    "nru3": "Ru-103",
+    "nru6": "Ru-106",
+    "nsr9": "Sr-89",
+    "nsr0": "Sr-90",
+    "ntem": "Te-131m",
+    "nte2": "Te-132",
+    "nxe3": "Xe-133",
+    "nxe5": "Xe-135",
+    "nyy0": "Y-90",
+    "nzr6": "Zr-95",
 }
-dose_nuclides = {
-    "fsum": "all nuclides"
-}
+
+dose_nuclides = nuclide_groups.copy()
+dose_nuclides["nsum"] = "all nuclides"
+
 ages = {
     "aadu": "adult",
-    "ac01": "child 1y"
+    "ac01": "child 1y",
+    "ac05": "child 5y",
+    "ac10": "child 10y",
+    "ac15": "child 15y"
 }
 inttimes = {
-    "t01y": "1y",
+    "t07d": "7 days",
+    "t14d": "14 days",
+    "t30d": "30 days",
+    "t03m": "3 months",
+    "t06m": "6 months",
+    "t01y": "1 year",
+    "t02y": "2 years",
+    "t05y": "5 years",
+    "t50y": "50 years",
     "tlif": "lifetime",
     "Time": "time dependent"
 }
 
-
+# TODO:
+# ingestion foodstuff
+# pathways
+# potential / normal living
 
 request_template = """<?xml version="1.0" encoding="UTF-8"?>
         <wps:Execute version="1.0.0" service="WPS" 
@@ -438,7 +550,7 @@ class Task(object):
                 # foodstuff (very similar to feedstuff)
                 elif dataitem=="Foodstuff activities":
                     f = foodstuff[tree_str]
-                    if not f in  self.foodstuff_activity:
+                    if not f in self.foodstuff_activity:
                         self.foodstuff_activity[f] = {}
                     if "pro" in tree[1]:
                         p = "processed"
@@ -461,26 +573,34 @@ class Task(object):
                         continue
                     self.foodstuff_activity[f][p][n][t][m] = i
                 elif dataitem=="Ingestion dose":
-                    print ( datapath )
                     o = organ[tree_str]
-                    if not o in  self.longer_term_dose_inhalation:
-                        self.longer_term_dose_inhalation[o] = {}
+                    if not o in  self.longer_term_dose_ingestion:
+                        self.longer_term_dose_ingestion[o] = {}
                     if "pro" in tree[1]:
                         p = "processed"
                     else:
                         p = "raw products"
-                    if not p in self.longer_term_dose_inhalation[o]:
-                        self.longer_term_dose_inhalation[o][p] = {}
+                    if not p in self.longer_term_dose_ingestion[o]:
+                        self.longer_term_dose_ingestion[o][p] = {}
+                    foodstuff_str = ( tree[2].split(".")[-1][:4] )
+                    f = dose_foodstuff[foodstuff_str]
+                    if not f in self.longer_term_dose_ingestion[o][p]:
+                        self.longer_term_dose_ingestion[o][p][f] = {}
+                    nuc_str = tree[3].split(".")[-1][:4]
                     n = dose_nuclides[nuc_str]
-                    if not n in self.longer_term_dose_inhalation[o][p]:
-                        self.longer_term_dose_inhalation[o][p][n] = {}
+                    if not n in self.longer_term_dose_ingestion[o][p][f]:
+                        self.longer_term_dose_ingestion[o][p][f][n] = {}
                     age_str = tree[4].split(".")[-1][:4]
                     a = ages[age_str]
-                    if not a in self.longer_term_dose_inhalation[o][p][n]:
-                        self.longer_term_dose_inhalation[o][p][n][a] = {}
+                    if not a in self.longer_term_dose_ingestion[o][p][f][n]:
+                        self.longer_term_dose_ingestion[o][p][f][n][a] = {}
                     it_str =  tree[5].split(".")[-1][:4]
                     it = inttimes[it_str]
-                    self.longer_term_dose_inhalation[o][p][n][a][it] = i
+                    self.longer_term_dose_ingestion[o][p][f][n][a][it] = i
+                # TODO:
+                #self.longer_term_dose_ground 
+                #self.longer_term_dose_inhalation 
+                #self.longer_term_dose_total
                     
 class GridSeries(object):
     "Series of grid results"
@@ -605,7 +725,6 @@ class GridSeries(object):
         Get max value and its lon/lat location
         Filter by time value is supported.
         """
-        # TODO: return None time in the case of non time-dependent dataitem
         gis_data = gpkg_driver.Open(self.gpkg_file())
         layer = gis_data.GetLayer(2) # view
         if time_value!=None:
@@ -629,7 +748,10 @@ class GridSeries(object):
         else:
             lon,lat = None, None
         if max_value>0:
-            timestamp = datetime.fromtimestamp(timestamp)
+            if timestamp>0:
+                timestamp = datetime.fromtimestamp(timestamp)
+            else: # not really a timestamp
+                timestame = None
         return (max_value,(lon,lat),timestamp)
 
     def areaExceeding(self,value,time_value):
