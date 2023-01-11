@@ -113,8 +113,10 @@ foodstuff = {
     "fwwf" : "Winter wheat flour",
     "fwwh" : "Winter wheat"
 }
+# dose foodstuff is same but with sum included
 dose_foodstuff = foodstuff.copy()
 dose_foodstuff["fsum"] = "all products (sum)"
+
 organ = {
     "obos": "bone surface",
     "obre": "breast",
@@ -165,7 +167,7 @@ nuclide_groups = {
     "nyy0": "Y-90",
     "nzr6": "Zr-95",
 }
-
+# nuclide doses contain also sum of all nuclides
 dose_nuclides = nuclide_groups.copy()
 dose_nuclides["nsum"] = "all nuclides"
 
@@ -190,10 +192,25 @@ inttimes = {
     "Time": "time dependent"
 }
 
-# TODO:
-# ingestion foodstuff
-# pathways
-# potential / normal living
+# name and types of results
+# 'type' means potential / normal living attribute
+# inttime is integration time
+dose_pathways = {
+    "Cloud dose": "nuclide,dose_type",
+    "Ground dose": "nuclide,dose_type,inttime",
+    "Ground dose (shortterm)": "nuclide,dose_type",
+    "Ingestion dose": "product,foodstuff,nuclide,inttime",
+    "Inhalation dose FDMT": "nuclide,dose_type",
+    "Resuspension dose": "nuclide,dose_type,inttime",
+    "Skin dose": "nuclide,dose_type",
+    "Total dose from all exposure except ingestion": "nuclide,dose_type,inttime",
+    "Total dose from all pathways": "foodstuff,nuclide,dose_type,inttime"
+}
+
+dose_type = {
+    "epot": "potential",
+    "eexp": "normal living"
+}
 
 request_template = """<?xml version="1.0" encoding="UTF-8"?>
         <wps:Execute version="1.0.0" service="WPS" 
@@ -508,35 +525,38 @@ class Task(object):
         if self.modelwrappername in ("FDMT","Emergency"):
             self.feedstuff_activity = {}
             self.foodstuff_activity = {}
-            self.longer_term_dose_ground = {}
-            self.longer_term_dose_ingestion = {}
-            self.longer_term_dose_inhalation = {}
-            self.longer_term_dose_total = {}
-            # re
+            self.longer_term_dose = {}
+            #self.foodstuff_screening = 
             for i in self.gridseries:
                 datapath = i.datapath.split("=;=")
-                try:
-                    dataitem = datapath[4]
-                    tree = datapath[-1].split("._")
-                    tree_str = tree[0].split(".")[-1][:4]
-                    nuc_str = tree[2].split(".")[-1][:4]
-                except IndexError:
-                    dataitem = None
+                # skip unnecessary data items
+                if "Environmental" in i.datapath:
+                    continue
+                # read metadata from tree
+                dataitem = datapath[4]
+                tree = datapath[-1].split("._")
+                tree_str = []
+                for tree_item in tree:
+                    tree_str.append(tree_item.split(".")[-1][:4])
                 # feedstuff 
-                if dataitem=="Feedstuff activities":
-                    f = feedstuff[tree_str]
-                    if not f in  self.feedstuff_activity:
+                # Screening occurs twice in JSON response?
+                if dataitem=="Screening":
+                    self.foodstuff_screening = i
+                # feedstuff related data items
+                elif dataitem=="Feedstuff activities":
+                    f = feedstuff[tree_str[0]]
+                    if not f in self.feedstuff_activity:
                         self.feedstuff_activity[f] = {}
-                    if "pro" in tree[1]:
+                    if "pro" in tree_str[1]:
                         p = "processed"
                     else:
                         p = "raw products"
                     if not p in  self.feedstuff_activity[f]:
                         self.feedstuff_activity[f][p] = {}
-                    n = nuclide_groups[nuc_str]
+                    n = nuclide_groups[tree_str[2]]
                     if not n in  self.feedstuff_activity[f][p]:
                         self.feedstuff_activity[f][p][n] = {}
-                    t = "potential" # no other options available via jrodos?
+                    t = dose_type[tree_str[3]]
                     if not t in  self.feedstuff_activity[f][p][n]:
                         self.feedstuff_activity[f][p][n][t] = {}
                     if "tmax" in tree[4]:
@@ -549,22 +569,22 @@ class Task(object):
                     self.feedstuff_activity[f][p][n][t][m] = i
                 # foodstuff (very similar to feedstuff)
                 elif dataitem=="Foodstuff activities":
-                    f = foodstuff[tree_str]
+                    f = foodstuff[tree_str[0]]
                     if not f in self.foodstuff_activity:
                         self.foodstuff_activity[f] = {}
-                    if "pro" in tree[1]:
+                    if "pro" in tree_str[1]:
                         p = "processed"
                     else:
                         p = "raw products"
-                    if not p in  self.foodstuff_activity[f]:
+                    if not p in self.foodstuff_activity[f]:
                         self.foodstuff_activity[f][p] = {}
-                    n = nuclide_groups[nuc_str]
+                    n = nuclide_groups[tree_str[2]]
                     if not n in  self.foodstuff_activity[f][p]:
                         self.foodstuff_activity[f][p][n] = {}
-                    t = "potential" # no other options available via jrodos?
-                    if not t in  self.foodstuff_activity[f][p][n]:
+                    t = dose_type[tree_str[3]]
+                    if not t in self.foodstuff_activity[f][p][n]:
                         self.foodstuff_activity[f][p][n][t] = {}
-                    if "tmax" in tree[4]:
+                    if "tmax" in tree_str[4]:
                         m = "max values"
                     else:
                         m = "time dependence"
@@ -572,40 +592,86 @@ class Task(object):
                         # service is fixed
                         continue
                     self.foodstuff_activity[f][p][n][t][m] = i
-                elif dataitem=="Ingestion dose":
-                    o = organ[tree_str]
-                    if not o in  self.longer_term_dose_ingestion:
-                        self.longer_term_dose_ingestion[o] = {}
-                    if "pro" in tree[1]:
-                        p = "processed"
-                    else:
-                        p = "raw products"
-                    if not p in self.longer_term_dose_ingestion[o]:
-                        self.longer_term_dose_ingestion[o][p] = {}
-                    foodstuff_str = ( tree[2].split(".")[-1][:4] )
-                    f = dose_foodstuff[foodstuff_str]
-                    if not f in self.longer_term_dose_ingestion[o][p]:
-                        self.longer_term_dose_ingestion[o][p][f] = {}
-                    nuc_str = tree[3].split(".")[-1][:4]
-                    n = dose_nuclides[nuc_str]
-                    if not n in self.longer_term_dose_ingestion[o][p][f]:
-                        self.longer_term_dose_ingestion[o][p][f][n] = {}
-                    age_str = tree[4].split(".")[-1][:4]
-                    a = ages[age_str]
-                    if not a in self.longer_term_dose_ingestion[o][p][f][n]:
-                        self.longer_term_dose_ingestion[o][p][f][n][a] = {}
-                    it_str =  tree[5].split(".")[-1][:4]
-                    it = inttimes[it_str]
-                    self.longer_term_dose_ingestion[o][p][f][n][a][it] = i
-                # TODO:
-                #self.longer_term_dose_ground 
-                #self.longer_term_dose_inhalation 
-                #self.longer_term_dose_total
+                # longer term doses
+                elif dataitem in dose_pathways:
+                    d = dataitem
+                    result_type = dose_pathways[d]
+                    # every result has organ 
+                    if not d in self.longer_term_dose:
+                        self.longer_term_dose[d] = {}
+                    o = organ[tree_str[0]]
+                    if not o in  self.longer_term_dose[d]:
+                        self.longer_term_dose[d][o] = {}
+                    if result_type=="product,foodstuff,nuclide,inttime": # ingestion
+                        if "pro" in tree[1]:
+                            p = "processed"
+                        else:
+                            p = "raw products"
+                        if not p in self.longer_term_dose[d][o]:
+                            self.longer_term_dose[d][o][p] = {}
+                        f = dose_foodstuff[tree_str[2]]
+                        if not f in self.longer_term_dose[d][o][p]:
+                            self.longer_term_dose[d][o][p][f] = {}
+                        n = dose_nuclides[tree_str[3]]
+                        if not n in self.longer_term_dose[d][o][p][f]:
+                            self.longer_term_dose[d][o][p][f][n] = {}
+                        a = ages[tree_str[4]]
+                        if not a in self.longer_term_dose[d][o][p][f][n]:
+                            self.longer_term_dose[d][o][p][f][n][a] = {}
+                        it = inttimes[tree_str[5]]
+                        # TODO: time dependent results temporarily disabled
+                        if it=="time dependent":
+                            continue
+                        self.longer_term_dose[d][o][p][f][n][a][it] = i
+                    elif result_type=="nuclide,dose_type": # cloud, skin, groud (short)
+                        n = dose_nuclides[tree_str[1]]
+                        if not n in self.longer_term_dose[d][o]:
+                            self.longer_term_dose[d][o][n] = {}
+                        a = ages[tree_str[2]]
+                        if not a in self.longer_term_dose[d][o][n]:
+                            self.longer_term_dose[d][o][n][a] = {}
+                        dt = dose_type[tree_str[3]]
+                        self.longer_term_dose[d][o][n][a][dt] = i
+                    elif result_type=="nuclide,dose_type,inttime": # ground
+                        n = dose_nuclides[tree_str[1]]
+                        if not n in self.longer_term_dose[d][o]:
+                            self.longer_term_dose[d][o][n] = {}
+                        a = ages[tree_str[2]]
+                        if not a in self.longer_term_dose[d][o][n]:
+                            self.longer_term_dose[d][o][n][a] = {}
+                        dt = dose_type[tree_str[3]]
+                        if not dt in self.longer_term_dose[d][o][n][a].keys():
+                            self.longer_term_dose[d][o][n][a][dt] = {}
+                        it = inttimes[tree_str[4]]
+                        # TODO: time dependent results temporarily disabled
+                        if it=="time dependent":
+                            continue
+                        self.longer_term_dose[d][o][n][a][dt][it] = i
+                    elif result_type=="foodstuff,nuclide,dose_type,inttime":
+                        # ['oeff', 'fsum', 'niod', 'aadu', 'epot', 'Time']
+                        f = dose_foodstuff[tree_str[1]]
+                        if not f in self.longer_term_dose[d][o]:
+                            self.longer_term_dose[d][o][f] = {}
+                        n = dose_nuclides[tree_str[2]]
+                        if not n in self.longer_term_dose[d][o][f]:
+                            self.longer_term_dose[d][o][f][n] = {}
+                        a = ages[tree_str[3]]
+                        if not a in self.longer_term_dose[d][o][f][n].keys():
+                            self.longer_term_dose[d][o][f][n][a] = {}
+                        dt = dose_type[tree_str[4]]
+                        if not dt in self.longer_term_dose[d][o][f][n][a]:
+                            self.longer_term_dose[d][o][f][n][a][dt] = {}
+                        it = inttimes[tree_str[5]]
+                        # TODO: time dependent results temporarily disabled
+                        if it=="time dependent":
+                            continue
+                        self.longer_term_dose[d][o][f][n][a][dt][it] = i
+
                     
 class GridSeries(object):
     "Series of grid results"
     def __repr__(self):
-        return ("<GridSeries %s | %s>" % (self.groupname, self.name))
+        return ("<GridSeries %s>" % (self.pretty_name))
 
     def __init__(self,task,ddict):
         self.task = task
@@ -614,6 +680,7 @@ class GridSeries(object):
         self.gpkgfile = None
         for key in ddict:
             setattr(self,key,ddict[key])
+        self.pretty_name = self.groupname + "/" + self.name.replace("Tree._Tree.","/")[5:]
         self.output_dir = "{}/{}{}/{}/{}".format(self.rodos.storage,
                                                slugify(self.task.project.name),
                                                slugify(str(task.project.dateTimeModified)),
