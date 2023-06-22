@@ -1,3 +1,4 @@
 *.pyc
 *.swp
 venv
+src/rodospy.egg-info/

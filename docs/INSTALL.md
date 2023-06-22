@@ -17,7 +17,6 @@ Below is briefly described the installation for Ubuntu under Python3 virtual env
 * Set necessary env variables:
 ```
 export CPLUS_INCLUDE_PATH=/usr/include/gdal
-
 export C_INCLUDE_PATH=/usr/include/gdal
 ```
 * Install correspondent version using pip, probably `pip install GDAL==2.2.3`
