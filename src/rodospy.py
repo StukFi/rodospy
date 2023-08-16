@@ -319,7 +319,6 @@ class RodosConnection(object):
             raise RodosPyException( "No settings defined" )
         self.w = settings["wps"]
         self.wps = WebProcessingService(self.w["url"], 
-                                        verbose=False, # set this True when debugging
                                         skip_caps=True)
         self.storage = self.w["file_storage"]
         self.r = settings["rest"]
