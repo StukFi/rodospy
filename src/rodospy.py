@@ -679,7 +679,10 @@ class GridSeries(object):
         self.gpkgfile = None
         for key in ddict:
             setattr(self,key,ddict[key])
-        self.pretty_name = self.groupname + "/" + self.name.replace("Tree._Tree.","/")[5:]
+        try:
+            self.pretty_name = self.groupname + "/" + self.name.replace("Tree._Tree.","/")[5:]
+        except TypeError:
+            self.pretty_name = self.groupname + "/" + "unknown" 
         self.output_dir = "{}/{}{}/{}/{}".format(self.rodos.storage,
                                                slugify(self.task.project.name),
                                                slugify(str(task.project.dateTimeModified)),
@@ -714,7 +717,7 @@ class GridSeries(object):
                 threshold = -1
             else:
                 threshold = 1e-15
-            self.save_gpkg(None,True,threshold,time_columns)
+            filename = self.save_gpkg(None,True,threshold,time_columns)
         return self.output_dir
     
     def gpkg_file(self,time_columns="0-"):
@@ -1006,7 +1009,7 @@ class VectorGridSeries(object):
                                                              self.t_index,
                                                              self.z_index))
 
-    def get_filepath(self):
+    def get_filepath(self,time_columns="0-"):
         "generate filepath if check if it does exists"
         if not os.path.isdir(self.output_dir):
             threshold = 1e-15
